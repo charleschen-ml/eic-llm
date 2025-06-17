@@ -111,11 +111,11 @@ def main(script_args, training_args, model_args):
     # Dataset
     ################
     dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-    print(dataset[0])  # debug print
+    print(dataset["train"][0])  # debug print
     dataset = dataset.map(sft_preprocess)
     print("preprocessed dataset")
     # print(dataset['text'][0]) # debug print
-    print(dataset[0]["text"]) # debug print
+    print(dataset["train"][0]["text"]) # debug print
     dataset = dataset.select(range(3)) # truncate for pipeline debug
 
     ################
