@@ -116,7 +116,7 @@ def main(script_args, training_args, model_args):
     print("preprocessed dataset")
     # print(dataset['text'][0]) # debug print
     print(dataset["train"][0]["text"]) # debug print
-    dataset["train"] = dataset["train"].select(range(3)) # truncate for pipeline debug
+    dataset["train"] = dataset["train"].select(range(100)) # truncate for pipeline debug
 
     ################
     # Training
