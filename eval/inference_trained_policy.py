@@ -153,7 +153,7 @@ if __name__ == "__main__":
         max_length=2048,
     )
 
-    # hihi testtest
+    # hihi test
 
     ################
     # Generate completions before training
