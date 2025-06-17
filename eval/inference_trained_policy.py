@@ -140,7 +140,7 @@ if __name__ == "__main__":
     text_instr = "You are a math expert with clear and concise reasoning. Solve this problem step-by-step and box your final numerical answer:"
 
     # input
-    text_input = "A book with 50 pages, numbered 1 to 50, has its pages renumbered in reverse (page 1 becomes 50, page 2 becomes 49, etc.). How many pages retain the same ones digit before and after renumbering?"
+    text_input = "What is 2+2?"
 
     # combined system prompt + input
     text_inference = text_instr + "\n" + text_input + "\n"
