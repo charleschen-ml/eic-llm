@@ -125,7 +125,8 @@ if __name__ == "__main__":
     df_question = df["question"]
 
     # concatenate context + question
-    df_prompt = df_context + df_question
+    df = df.map(lambda x: {"prompt": x["context"] + " " + x["question"]})
+    # df_prompt = df_context + df_question
 
     # debug prints
     print("First context:")
@@ -133,7 +134,7 @@ if __name__ == "__main__":
     print("First question:")
     print(df_question[0])
     print("First prompt:")
-    print(df_prompt[0])
+    print(df["prompt"][0])
 
     # system prompt
     text_instr = "You are a math expert with clear and concise reasoning. Solve this problem step-by-step and box your final numerical answer:"
@@ -150,7 +151,7 @@ if __name__ == "__main__":
 
     inputs = tokenizer(
         # text_inference, # manual question
-        df_prompt[0],
+        df["prompt"][0],
         return_tensors="pt",
         padding=True,
         truncation=True,
