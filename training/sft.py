@@ -68,6 +68,12 @@ from trl import (
     get_quantization_config,
 )
 
+from datasets import load_dataset
+
+def sft_preprocess(df):
+    return {
+        "text": df["context"].strip() + "\n" + df["question"].strip() + "\n" + df["answers"]["text"][0].strip()
+    }
 
 def main(script_args, training_args, model_args):
     ################
@@ -105,6 +111,10 @@ def main(script_args, training_args, model_args):
     # Dataset
     ################
     dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    dataset = dataset.map(sft_preprocess)
+    print("preprocessed dataset")
+    print(dataset.head(1)) # debug print
+    dataset = dataset.select(range(3)) # truncate for pipeline debug
 
     ################
     # Training
