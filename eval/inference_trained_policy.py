@@ -172,7 +172,7 @@ if __name__ == "__main__":
 
     outputs = peft_base.generate(
         **inputs,
-        max_new_tokens=1024,
+        max_new_tokens=512,
         do_sample=False,
         # temperature=0.7,
         # num_return_sequences=2,
