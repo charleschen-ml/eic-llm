@@ -125,7 +125,7 @@ if __name__ == "__main__":
     df_question = df["question"]
 
     # concatenate context + question
-    df_prompt = df["context"] + df["question"]
+    df_prompt = df_context + df_question
 
     # debug prints
     print("First context:")
@@ -145,8 +145,8 @@ if __name__ == "__main__":
     text_inference = text_instr + "\n" + text_input + "\n"
 
     # debug prints
-    print("Manual question:")
-    print(text_inference)
+    # print("Manual question:")
+    # print(text_inference)
 
     inputs = tokenizer(
         # text_inference, # manual question
