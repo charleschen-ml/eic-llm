@@ -119,16 +119,21 @@ if __name__ == "__main__":
     # df_text = df["text"].to_list()
     # # df = df[["text"]]  # keep only the 'text' column
 
-    # load from hf
-    df = load_dataset("shoubing35/ones_digit_sft_dataset", split="val")
-    df_prompt = df["text_prompt"]
+    # load squad dataset from hf
+    df = load_dataset("rajpurkar/squad", split="validation") # split="train" or "validation"
+    df_context = df["context"]
+    df_question = df["question"]
+
+    # concatenate context + question
+    df_prompt = df["context"] + df["question"]
 
     # debug prints
-    print("First data point:")
-    # print(df_text[0])
+    print("First context:")
+    print(df_context[0])
+    print("First question:")
+    print(df_question[0])
+    print("First prompt:")
     print(df_prompt[0])
-    print("First answer:")
-    print(df["answer"][0])
 
     # system prompt
     text_instr = "You are a math expert with clear and concise reasoning. Solve this problem step-by-step and box your final numerical answer:"
@@ -144,9 +149,8 @@ if __name__ == "__main__":
     print(text_inference)
 
     inputs = tokenizer(
-        # df_text[0], # first question in dataset
-        text_inference, # manual question
-        # df_prompt[0],
+        # text_inference, # manual question
+        df_prompt[0],
         return_tensors="pt",
         padding=True,
         truncation=True,
