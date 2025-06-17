@@ -150,8 +150,8 @@ if __name__ == "__main__":
     # print(text_inference)
 
     inputs = tokenizer(
-        # text_inference, # manual question
-        df["prompt"][0],
+        text_inference, # manual question
+        # df["prompt"][0],
         return_tensors="pt",
         padding=True,
         truncation=True,
