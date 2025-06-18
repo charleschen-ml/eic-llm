@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
     outputs = peft_base.generate(
         **inputs,
-        max_new_tokens=512,
+        max_new_tokens=256,
         do_sample=False,
         # temperature=0.7,
         # num_return_sequences=2,
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     outputs = peft_sft.generate(
         **inputs,
-        max_new_tokens=512,
+        max_new_tokens=256,
         do_sample=False,
         # temperature=0.7,
         # num_return_sequences=2,
@@ -232,8 +232,8 @@ if __name__ == "__main__":
     for i, completion in enumerate(completions):  # Print completions and their scores
         print(f"\n--- Completion {i + 1} ---")
         print(completion)
-        print(f"Prediction = {extract_boxed(completion)}")
-        print(f"Answer = {df['answer'][i]}")
+        # print(f"Prediction = {extract_boxed(completion)}")
+        # print(f"Answer = {df['answer'][i]}")
 
     # ################
     # # Generate completions after grpo training
