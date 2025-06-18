@@ -220,6 +220,7 @@ if __name__ == "__main__":
 
     # Figure out how many tokens were used for the prompt:
     prompt_length = inputs["input_ids"].shape[1]
+    print(f"prompt_length = {prompt_length}")
 
     # Decode only tokens beyond the prompt
     completions = []
