@@ -120,19 +120,19 @@ if __name__ == "__main__":
     # # df = df[["text"]]  # keep only the 'text' column
 
     # load squad dataset from hf
-    df = load_dataset("rajpurkar/squad", split="validation") # split="train" or "validation"
+    df = load_dataset("rajpurkar/squad", split="train") # split="train" or "validation"
     df_context = df["context"]
     df_question = df["question"]
 
     # concatenate context + question
-    df = df.map(lambda x: {"prompt": x["context"] + " " + x["question"]})
-    # df_prompt = df_context + df_question
+    # df = df.map(lambda x: {"prompt": x["context"] + " " + x["question"]})
+    df = df.map(lambda x: {"prompt": x["context"].strip() + "\n" + x["question"].strip() + "\n"}) # match sft style
 
     # debug prints
-    print("First context:")
-    print(df_context[0])
-    print("First question:")
-    print(df_question[0])
+    # print("First context:")
+    # print(df_context[0])
+    # print("First question:")
+    # print(df_question[0])
     print("First prompt:")
     print(df["prompt"][0])
 
