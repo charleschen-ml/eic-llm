@@ -158,46 +158,44 @@ if __name__ == "__main__":
         max_length=2048,
     )
 
-    # hihi test1
+    # ################
+    # # Generate completions before training
+    # ################
 
-    ################
-    # Generate completions before training
-    ################
+    # # Craete fresh peft model (for loading in 8-bit)
+    # from peft import get_peft_model
+    # import torch
+    # peft_base = get_peft_model(base_model, peft_config)
+    # peft_base.eval()
+    # inputs.to(peft_base.device) # Create fresh peft model
+    # # model_device = next(peft_base.parameters()).device
+    # # inputs = {k: v.to(model_device) for k, v in inputs.items()}
 
-    # Craete fresh peft model (for loading in 8-bit)
-    from peft import get_peft_model
-    import torch
-    peft_base = get_peft_model(base_model, peft_config)
-    peft_base.eval()
-    inputs.to(peft_base.device) # Create fresh peft model
-    # model_device = next(peft_base.parameters()).device
-    # inputs = {k: v.to(model_device) for k, v in inputs.items()}
+    # # print("Batch size:", inputs["input_ids"].shape[0]) # debug: batch generate index out of range
 
-    # print("Batch size:", inputs["input_ids"].shape[0]) # debug: batch generate index out of range
+    # outputs = peft_base.generate(
+    #     **inputs,
+    #     max_new_tokens=256,
+    #     do_sample=False,
+    #     # temperature=0.7,
+    #     # num_return_sequences=2,
+    # )
 
-    outputs = peft_base.generate(
-        **inputs,
-        max_new_tokens=256,
-        do_sample=False,
-        # temperature=0.7,
-        # num_return_sequences=2,
-    )
+    # # Figure out how many tokens were used for the prompt:
+    # prompt_length = inputs["input_ids"].shape[1]
+    # print(f"prompt_length = {prompt_length}")
 
-    # Figure out how many tokens were used for the prompt:
-    prompt_length = inputs["input_ids"].shape[1]
-    print(f"prompt_length = {prompt_length}")
-
-    # Decode only tokens beyond the prompt
-    completions = []
-    for output in outputs:
-        # Slice off the prompt tokens to keep only the model’s response
-        response_tokens = output[prompt_length:]
-        response_text = tokenizer.decode(response_tokens, skip_special_tokens=True)
-        completions.append(response_text)
-    print("\nBase Model Inference:")
-    for i, completion in enumerate(completions):  # Print completions and extract boxed answer
-        print(f"\n--- Completion {i + 1} ---")
-        print(completion)
+    # # Decode only tokens beyond the prompt
+    # completions = []
+    # for output in outputs:
+    #     # Slice off the prompt tokens to keep only the model’s response
+    #     response_tokens = output[prompt_length:]
+    #     response_text = tokenizer.decode(response_tokens, skip_special_tokens=True)
+    #     completions.append(response_text)
+    # print("\nBase Model Inference:")
+    # for i, completion in enumerate(completions):  # Print completions and extract boxed answer
+    #     print(f"\n--- Completion {i + 1} ---")
+    #     print(completion)
 
     ################
     # Generate completions after sft training
