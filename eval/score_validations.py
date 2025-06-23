@@ -5,7 +5,7 @@ from datasets import load_metric
 from tqdm import tqdm
 
 # Paths
-model_path = "path/to/your/trained/gpt2"  # <-- UPDATE THIS
+model_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-sft"  # <-- UPDATE THIS
 eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json"
 
 # Load tokenizer and trained model
