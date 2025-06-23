@@ -1,7 +1,7 @@
 import json
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from datasets import evaluate
+import evaluate
 from tqdm import tqdm
 
 # Paths
