@@ -15,7 +15,7 @@ model.eval()
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
-    dataset = json.load(f)
+    dataset = [json.loads(line) for line in f]
 
 # Load SQuAD metric
 metric = evaluate.load("squad")
