@@ -55,3 +55,5 @@ for example in tqdm(dataset, desc="Evaluating"):
 results = metric.compute(predictions=predictions, references=references)
 print(f"Exact Match: {results['exact_match']:.2f}")
 print(f"F1 Score: {results['f1']:.2f}")
+num_correct = int(results["exact_match"] * len(predictions) / 100)
+print(f"{num_correct} out of {len(predictions)} predictions were exact matches.")
