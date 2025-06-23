@@ -117,10 +117,14 @@ def main(script_args, training_args, model_args):
         split = dataset.train_test_split(test_size=0.2, seed=42)
         train_dataset = split["train"].map(sft_preprocess)
         eval_dataset = split["test"].map(sft_preprocess)
+        print(f"Train size: {len(train_dataset)}")
+        print(f"Validation size: {len(eval_dataset)}")
     else:
         # Don't split if dataset has only 1 example
         train_dataset = dataset.map(sft_preprocess)
         eval_dataset = None
+        print(f"Train size: {len(train_dataset)}")
+        print("Validation set not created (MAX_DATASET_SIZE <= 1)")
     print("Example preprocessed train sample:")
     print(train_dataset[0]["text"])
 
