@@ -110,7 +110,9 @@ def main(script_args, training_args, model_args):
     ################
     # Dataset
     ################
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    # dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    MAX_DATASET_SIZE = 1 # set datset size
+    dataset = dataset.shuffle(seed=42).select(range(MAX_DATASET_SIZE)) # shuffle and truncate
     print(dataset["train"][0])  # debug print
     dataset = dataset.map(sft_preprocess)
     print("preprocessed dataset")
