@@ -1,7 +1,7 @@
 import json
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from datasets import load_metric
+from datasets import evaluate
 from tqdm import tqdm
 
 # Paths
@@ -18,7 +18,7 @@ with open(eval_json_path, "r") as f:
     dataset = json.load(f)
 
 # Load SQuAD metric
-metric = load_metric("squad")
+metric = evaluate.load("squad")
 
 # Inference loop
 predictions, references = [], []
