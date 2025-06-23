@@ -127,6 +127,7 @@ def main(script_args, training_args, model_args):
         print("Validation set not created (MAX_DATASET_SIZE <= 1)")
     print("Example preprocessed train sample:")
     print(train_dataset[0]["text"])
+    eval_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json") # Save eval set for inference script
 
     ################
     # Training
