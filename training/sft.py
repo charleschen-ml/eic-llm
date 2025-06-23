@@ -68,8 +68,6 @@ from trl import (
     get_quantization_config,
 )
 
-from datasets import load_dataset
-
 def sft_preprocess(df):
     return {
         "text": df["context"].strip() + "\n" + df["question"].strip() + "\n" + df["answers"]["text"][0].strip()
@@ -110,15 +108,21 @@ def main(script_args, training_args, model_args):
     ################
     # Dataset
     ################
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-    MAX_DATASET_SIZE = 1 # set datset size
-    dataset = dataset.shuffle(seed=42).select(range(MAX_DATASET_SIZE)) # shuffle and truncate
-    print(dataset["train"][0])  # debug print
-    dataset = dataset.map(sft_preprocess)
-    print("preprocessed dataset")
-    # print(dataset['text'][0]) # debug print
-    print(dataset["train"][0]["text"]) # debug print
-    dataset["train"] = dataset["train"].select(range(1)) # truncate for pipeline debug
+    raw_datasets = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    MAX_DATASET_SIZE = 2  # Total number of examples across train+validation
+    # Shuffle and truncate the train split only
+    dataset = raw_datasets["train"].shuffle(seed=42).select(range(MAX_DATASET_SIZE))
+    if MAX_DATASET_SIZE > 1:
+        # 80/20 split
+        split = dataset.train_test_split(test_size=0.2, seed=42)
+        train_dataset = split["train"].map(sft_preprocess)
+        eval_dataset = split["test"].map(sft_preprocess)
+    else:
+        # Don't split if dataset has only 1 example
+        train_dataset = dataset.map(sft_preprocess)
+        eval_dataset = None
+    print("Example preprocessed train sample:")
+    print(train_dataset[0]["text"])
 
     ################
     # Training
