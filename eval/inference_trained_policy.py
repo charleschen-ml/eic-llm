@@ -55,7 +55,9 @@ metric = evaluate.load("squad")
 
 # Score squad metrics (EM, F1) after inference
 def score_squad(predictions, references):
-    """Compute and print SQuAD EM and F1 scores."""
+    for i in range(len(predictions)):
+        print(f"prediction {i} = {predictions[i]['prediction_text']}")
+        print(f"reference {i} = {references[i]['answers']['text']}")
     metric = evaluate.load("squad")
     results = metric.compute(predictions=predictions, references=references)
 
@@ -142,7 +144,7 @@ if __name__ == "__main__":
         question = example["question"].strip()
         qid = example.get("id", f"id_{len(predictions)}")
         prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
-        print(f"prompt = \n{prompt}")
+        # print(f"prompt = \n{prompt}")
 
         inputs = tokenizer(
             prompt,
@@ -173,11 +175,6 @@ if __name__ == "__main__":
             "answers": example["answers"]
         })
 
-    # print(f"predictions = \n{predictions}")
-    # print(f"references = \n{references}")
-    for i in range(len(predictions)):
-        print(f"prediction {i} = {predictions[i]['prediction_text']}")
-        print(f"reference {i} = {references[i]['answers']['text']}")
     results = score_squad(predictions, references)
 
     ################
@@ -197,7 +194,7 @@ if __name__ == "__main__":
         question = example["question"].strip()
         qid = example.get("id", f"id_{len(predictions)}")
         prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
-        print(f"prompt = \n{prompt}")
+        # print(f"prompt = \n{prompt}")
 
         inputs = tokenizer(
             prompt,
@@ -228,9 +225,4 @@ if __name__ == "__main__":
             "answers": example["answers"]
         })
 
-        # print(f"predictions = \n{predictions}")
-        # print(f"references = \n{references}")
-        for i in range(len(predictions)):
-            print(f"prediction {i} = {predictions[i]['prediction_text']}")
-            print(f"reference {i} = {references[i]['answers']['text']}")
         results = score_squad(predictions, references)
