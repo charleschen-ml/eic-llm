@@ -96,6 +96,7 @@ if __name__ == "__main__":
     base_model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code
     )
+    print(f"Loaded base model path: {model_args.model_name_or_path}")
 
     # load peft config
     peft_config = get_peft_config(model_args)
