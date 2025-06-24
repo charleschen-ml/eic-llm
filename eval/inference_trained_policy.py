@@ -1,4 +1,4 @@
-# Inference using 1.) base model, 2.) sft-trained model, 3.) grpo-trained model
+# Inference using 1.) base model, 2.) sft-trained model
 
 """
 # Charles Colab script
@@ -19,8 +19,10 @@
 """
 
 import shutil
-
+import evaluate
+from tqdm import tqdm
 import torch
+from peft import get_peft_model
 from accelerate import PartialState
 from datasets import load_dataset
 from transformers import (
@@ -29,7 +31,6 @@ from transformers import (
     AutoTokenizer,
     HfArgumentParser,
 )
-
 from trl import (
     ModelConfig,
     PPOConfig,
@@ -41,20 +42,15 @@ from trl import (
 )
 from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
-import re
+# Paths
+eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json"
 
-def extract_boxed(text):
-    """
-    Extracts the numerical value inside the first \boxed{} expression in the given string.
-    Parameters:
-        text (str): The input string containing LaTeX-style boxed expression.
-    Returns:
-        int or None: The extracted number if found, otherwise None.
-    """
-    match = re.search(r"\\boxed\{(\d+)\}", text)
-    if match:
-        return int(match.group(1))
-    return None
+# Load validation examples from JSON
+with open(eval_json_path, "r") as f:
+    dataset = [json.loads(line) for line in f]
+
+# Load SQuAD metric
+metric = evaluate.load("squad")
 
 if __name__ == "__main__":
     # parse script arguments
@@ -110,126 +106,91 @@ if __name__ == "__main__":
     else:
         ref_policy = None
 
-    # Create inference input
-    from datasets import Dataset
-    import pandas as pd
-
-    # load from csv
-    # df = pd.read_csv("/content/drive/MyDrive/Colab_Notebooks/my_dataset/sft_dataset.csv")
-    # df_text = df["text"].to_list()
-    # # df = df[["text"]]  # keep only the 'text' column
-
     # load squad dataset from hf
     df = load_dataset("rajpurkar/squad", split="train") # split="train" or "validation"
     df_context = df["context"]
     df_question = df["question"]
-
-    # concatenate context + question
-    # df = df.map(lambda x: {"prompt": x["context"] + " " + x["question"]})
     df = df.map(lambda x: {"prompt": x["context"].strip() + "\n" + x["question"].strip() + "\n"}) # match sft style
-
-    # debug prints
-    # print("First context:")
-    # print(df_context[0])
-    # print("First question:")
-    # print(df_question[0])
-    print("First prompt:")
-    print(df["prompt"][0])
-
-    # system prompt
-    text_instr = "You are a math expert with clear and concise reasoning. Solve this problem step-by-step and box your final numerical answer:"
-
-    # input
-    text_input = "What is 2+2?"
-
-    # combined system prompt + input
-    text_inference = text_instr + "\n" + text_input + "\n"
-
-    # debug prints
-    # print("Manual question:")
-    # print(text_inference)
-
-    inputs = tokenizer(
-        # text_inference, # manual question
-        df["prompt"][0],
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=2048,
-    )
 
     ################
     # Generate completions before training
     ################
 
     # Craete fresh peft model (for loading in 8-bit)
-    from peft import get_peft_model
-    import torch
     peft_base = get_peft_model(base_model, peft_config)
     peft_base.eval()
-    inputs.to(peft_base.device) # Create fresh peft model
-    # model_device = next(peft_base.parameters()).device
-    # inputs = {k: v.to(model_device) for k, v in inputs.items()}
 
-    # print("Batch size:", inputs["input_ids"].shape[0]) # debug: batch generate index out of range
+    # Inference loop
+    predictions, references = [], []
 
-    outputs = peft_base.generate(
-        **inputs,
-        max_new_tokens=256,
-        do_sample=False,
-        # temperature=0.7,
-        # num_return_sequences=2,
-    )
+    for example in tqdm(dataset, desc="Evaluating", disable=True):
+        context = example["context"].strip()
+        question = example["question"].strip()
+        qid = example.get("id", f"id_{len(predictions)}")
+        prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
 
-    # Figure out how many tokens were used for the prompt:
-    prompt_length = inputs["input_ids"].shape[1]
-    print(f"prompt_length = {prompt_length}")
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512,
+        ).to(peft_base.device)
 
-    # Decode only tokens beyond the prompt
-    completions = []
-    for output in outputs:
-        # Slice off the prompt tokens to keep only the model’s response
-        response_tokens = output[prompt_length:]
-        response_text = tokenizer.decode(response_tokens, skip_special_tokens=True)
-        completions.append(response_text)
-    print("\nBase Model Inference:")
-    for i, completion in enumerate(completions):  # Print completions and extract boxed answer
-        print(f"\n--- Completion {i + 1} ---")
-        print(completion)
+        with torch.no_grad():
+            outputs = peft_base.generate(
+                **inputs,
+                max_new_tokens=32,
+                do_sample=False,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.eos_token_id
+            )
 
-    ################
-    # Generate completions after sft training
-    ################
+        generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
 
-    # Load sft-trained peft model
-    from peft import PeftModel
-    adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-sft"
-    peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
-    peft_sft.eval()
-    inputs.to(peft_sft.device)
+        predictions.append({
+            "id": qid,
+            "prediction_text": generated
+        })
 
-    outputs = peft_sft.generate(
-        **inputs,
-        max_new_tokens=512,
-        do_sample=False,
-        # temperature=0.7,
-        # num_return_sequences=2,
-    )
+        references.append({
+            "id": qid,
+            "answers": example["answers"]
+        })
 
-    # Figure out how many tokens were used for the prompt:
-    prompt_length = inputs["input_ids"].shape[1]
-    print(f"prompt_length = {prompt_length}")
-
-    # Decode only tokens beyond the prompt
-    completions = []
-    for output in outputs:
-        # Slice off the prompt tokens to keep only the model’s response
-        response_tokens = output[prompt_length:]
-        response_text = tokenizer.decode(response_tokens, skip_special_tokens=True)
-        completions.append(response_text)
-    print("\nSFT Model Inference:")
-    for i, completion in enumerate(completions):  # Print completions and their scores
-        print(f"\n--- Completion {i + 1} ---")
-        print(completion)
-        # print(f"Prediction = {extract_boxed(completion)}")
-        # print(f"Answer = {df['answer'][i]}")
+    # ################
+    # # Generate completions after sft training
+    # ################
+    #
+    # # Load sft-trained peft model
+    # from peft import PeftModel
+    # adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-sft"
+    # peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
+    # peft_sft.eval()
+    # inputs.to(peft_sft.device)
+    #
+    # outputs = peft_sft.generate(
+    #     **inputs,
+    #     max_new_tokens=512,
+    #     do_sample=False,
+    #     # temperature=0.7,
+    #     # num_return_sequences=2,
+    # )
+    #
+    # # Figure out how many tokens were used for the prompt:
+    # prompt_length = inputs["input_ids"].shape[1]
+    # print(f"prompt_length = {prompt_length}")
+    #
+    # # Decode only tokens beyond the prompt
+    # completions = []
+    # for output in outputs:
+    #     # Slice off the prompt tokens to keep only the model’s response
+    #     response_tokens = output[prompt_length:]
+    #     response_text = tokenizer.decode(response_tokens, skip_special_tokens=True)
+    #     completions.append(response_text)
+    # print("\nSFT Model Inference:")
+    # for i, completion in enumerate(completions):  # Print completions and their scores
+    #     print(f"\n--- Completion {i + 1} ---")
+    #     print(completion)
+    #     # print(f"Prediction = {extract_boxed(completion)}")
+    #     # print(f"Answer = {df['answer'][i]}")
