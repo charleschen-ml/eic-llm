@@ -173,8 +173,11 @@ if __name__ == "__main__":
             "answers": example["answers"]
         })
 
-    print(f"predictions = \n{predictions}")
-    print(f"references = \n{references}")
+    # print(f"predictions = \n{predictions}")
+    # print(f"references = \n{references}")
+    for i in range(len(predictions)):
+        print(f"prediction {i} = {predictions[i]['prediction_text']}")
+        print(f"reference {i} = {references[i]['answers']['text']}")
     results = score_squad(predictions, references)
 
     ################
@@ -225,6 +228,9 @@ if __name__ == "__main__":
             "answers": example["answers"]
         })
 
-        print(f"predictions = \n{predictions}")
-        print(f"references = \n{references}")
+        # print(f"predictions = \n{predictions}")
+        # print(f"references = \n{references}")
+        for i in range(len(predictions)):
+            print(f"prediction {i} = {predictions[i]['prediction_text']}")
+            print(f"reference {i} = {references[i]['answers']['text']}")
         results = score_squad(predictions, references)
