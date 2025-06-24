@@ -23,7 +23,7 @@ metric = evaluate.load("squad")
 # Inference loop
 predictions, references = [], []
 
-for example in tqdm(dataset, desc="Evaluating"):
+for example in tqdm(dataset, desc="Evaluating", disable=True):
     context = example["context"].strip()
     question = example["question"].strip()
     qid = example.get("id", f"id_{len(predictions)}")
