@@ -62,7 +62,7 @@ def score_squad(predictions, references):
     results = metric.compute(predictions=predictions, references=references)
 
     num_correct = int(results["exact_match"] * len(predictions) / 100)
-    print(f"Exact Match: {results['exact_match']:.2f} ({num_correct} / {len(predictions)})")
+    print(f"Exact Match: {results['exact_match']:.2f} ({num_correct}/{len(predictions)})")
     print(f"F1 Score: {results['f1']:.2f}")
     return results
 
@@ -228,4 +228,4 @@ if __name__ == "__main__":
             "answers": example["answers"]
         })
 
-        results = score_squad(predictions, references)
+    results = score_squad(predictions, references)
