@@ -37,6 +37,7 @@ for example in tqdm(dataset, desc="Evaluating", disable=True):
             max_new_tokens=32,
             do_sample=False,
             eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.eos_token_id
         )
 
     generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
