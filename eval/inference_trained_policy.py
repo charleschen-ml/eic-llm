@@ -48,14 +48,15 @@ eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json"
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
-    dataset = [json.loads(line) for line in f][:2]
+    dataset = [json.loads(line) for line in f]
+print(f"Examples used for inference: {len(dataset)}")
 
 # Load SQuAD metric
 metric = evaluate.load("squad")
 
 # Score squad metrics (EM, F1) after inference
 def score_squad(predictions, references):
-    for i in range(len(predictions)):
+    for i in range(min(len(predictions), 2)): # print at most 2 samples
         print(f"prediction {i} = {predictions[i]['prediction_text']}")
         print(f"reference {i} = {references[i]['answers']['text']}")
     metric = evaluate.load("squad")
