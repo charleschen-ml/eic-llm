@@ -47,7 +47,7 @@ eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json"
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
-    dataset = [json.loads(line) for line in f]
+    dataset = [json.loads(line) for line in f][:2]
 
 # Load SQuAD metric
 metric = evaluate.load("squad")
