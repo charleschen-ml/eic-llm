@@ -61,10 +61,9 @@ def score_squad(predictions, references):
     metric = evaluate.load("squad")
     results = metric.compute(predictions=predictions, references=references)
 
-    print(f"Exact Match: {results['exact_match']:.2f}")
-    print(f"F1 Score: {results['f1']:.2f}")
     num_correct = int(results["exact_match"] * len(predictions) / 100)
-    print(f"{num_correct} out of {len(predictions)} predictions were exact matches.")
+    print(f"Exact Match: {results['exact_match']:.2f} ({num_correct} / {len(predictions)})")
+    print(f"F1 Score: {results['f1']:.2f}")
     return results
 
 if __name__ == "__main__":
@@ -139,7 +138,7 @@ if __name__ == "__main__":
     # Inference loop
     predictions, references = [], []
 
-    print("BEFORE TRAINING:\n")
+    print("\nBEFORE TRAINING:\n")
 
     for example in tqdm(dataset, desc="Evaluating", disable=True):
         context = example["context"].strip()
@@ -191,7 +190,7 @@ if __name__ == "__main__":
     # Inference loop
     predictions, references = [], []
 
-    print("AFTER TRAINING:\n")
+    print("\nAFTER TRAINING:\n")
 
     for example in tqdm(dataset, desc="Evaluating", disable=True):
         context = example["context"].strip()
