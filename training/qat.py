@@ -70,6 +70,7 @@ from trl import (
     get_quantization_config,
 )
 
+MAX_DATASET_SIZE = 100  # Total number of examples across train+validation
 USE_QUANTIZATION = True
 QUANT_BITS = 4
 
@@ -129,7 +130,6 @@ def main(script_args, training_args, model_args):
     # Dataset
     ################
     raw_datasets = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-    MAX_DATASET_SIZE = 10000  # Total number of examples across train+validation
     # Shuffle and truncate the train split only
     dataset = raw_datasets["train"].shuffle(seed=42).select(range(MAX_DATASET_SIZE))
     if MAX_DATASET_SIZE > 1:
