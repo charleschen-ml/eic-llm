@@ -23,7 +23,7 @@ import evaluate
 import json
 from tqdm import tqdm
 import torch
-from peft import get_peft_model
+from peft import get_peft_model, PeftModel
 from accelerate import PartialState
 from datasets import load_dataset
 from transformers import (
@@ -177,39 +177,54 @@ if __name__ == "__main__":
     print(f"references = \n{references}")
     results = score_squad(predictions, references)
 
-    # ################
-    # # Generate completions after sft training
-    # ################
-    #
-    # # Load sft-trained peft model
-    # from peft import PeftModel
-    # adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-sft"
-    # peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
-    # peft_sft.eval()
-    # inputs.to(peft_sft.device)
-    #
-    # outputs = peft_sft.generate(
-    #     **inputs,
-    #     max_new_tokens=512,
-    #     do_sample=False,
-    #     # temperature=0.7,
-    #     # num_return_sequences=2,
-    # )
-    #
-    # # Figure out how many tokens were used for the prompt:
-    # prompt_length = inputs["input_ids"].shape[1]
-    # print(f"prompt_length = {prompt_length}")
-    #
-    # # Decode only tokens beyond the prompt
-    # completions = []
-    # for output in outputs:
-    #     # Slice off the prompt tokens to keep only the model’s response
-    #     response_tokens = output[prompt_length:]
-    #     response_text = tokenizer.decode(response_tokens, skip_special_tokens=True)
-    #     completions.append(response_text)
-    # print("\nSFT Model Inference:")
-    # for i, completion in enumerate(completions):  # Print completions and their scores
-    #     print(f"\n--- Completion {i + 1} ---")
-    #     print(completion)
-    #     # print(f"Prediction = {extract_boxed(completion)}")
-    #     # print(f"Answer = {df['answer'][i]}")
+    ################
+    # Generate completions after sft training
+    ################
+
+    # Load sft-trained peft model
+    adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-sft"
+    peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
+    peft_sft.eval()
+
+    # Inference loop
+    predictions, references = [], []
+
+    for example in tqdm(dataset, desc="Evaluating", disable=True):
+        context = example["context"].strip()
+        question = example["question"].strip()
+        qid = example.get("id", f"id_{len(predictions)}")
+        prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
+        print(f"prompt = \n{prompt}")
+
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512,
+        ).to(peft_sft.device)
+
+        with torch.no_grad():
+            outputs = peft_sft.generate(
+                **inputs,
+                max_new_tokens=32,
+                do_sample=False,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.eos_token_id
+            )
+
+        generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
+
+        predictions.append({
+            "id": qid,
+            "prediction_text": generated
+        })
+
+        references.append({
+            "id": qid,
+            "answers": example["answers"]
+        })
+
+        print(f"predictions = \n{predictions}")
+        print(f"references = \n{references}")
+        results = score_squad(predictions, references)
