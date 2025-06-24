@@ -91,7 +91,8 @@ def patch_linear_forward_with_quantization(model, num_bits=4):
 
             def quantized_forward(self, input):
                 quantized_weight = quantize_tensor(self.weight, num_bits=num_bits)
-                print(f"[Quantize] Layer {self} max abs weight before: {self.weight.abs().max():.4f}, after quantize: {quantized_weight.abs().max():.4f}")
+                diff = (self.weight - quantized_weight).abs().mean() # sanity check
+                print(f"[Quantize] Layer {self} mean abs difference due to quant: {diff:.6f}") # sanity check
                 return nn.functional.linear(input, quantized_weight, self.bias)
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
