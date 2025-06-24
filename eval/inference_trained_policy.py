@@ -139,6 +139,8 @@ if __name__ == "__main__":
     # Inference loop
     predictions, references = [], []
 
+    print("BEFORE TRAINING:\n")
+
     for example in tqdm(dataset, desc="Evaluating", disable=True):
         context = example["context"].strip()
         question = example["question"].strip()
@@ -188,6 +190,8 @@ if __name__ == "__main__":
 
     # Inference loop
     predictions, references = [], []
+
+    print("AFTER TRAINING:\n")
 
     for example in tqdm(dataset, desc="Evaluating", disable=True):
         context = example["context"].strip()
