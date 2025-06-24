@@ -53,6 +53,18 @@ with open(eval_json_path, "r") as f:
 # Load SQuAD metric
 metric = evaluate.load("squad")
 
+# Score squad metrics (EM, F1) after inference
+def score_squad(predictions, references):
+    """Compute and print SQuAD EM and F1 scores."""
+    metric = evaluate.load("squad")
+    results = metric.compute(predictions=predictions, references=references)
+
+    print(f"Exact Match: {results['exact_match']:.2f}")
+    print(f"F1 Score: {results['f1']:.2f}")
+    num_correct = int(results["exact_match"] * len(predictions) / 100)
+    print(f"{num_correct} out of {len(predictions)} predictions were exact matches.")
+    return results
+
 if __name__ == "__main__":
     # parse script arguments
     parser = HfArgumentParser((ScriptArguments, PPOConfig, ModelConfig))
@@ -163,6 +175,7 @@ if __name__ == "__main__":
 
     print(f"predictions = \n{predictions}")
     print(f"references = \n{references}")
+    results = score_squad(predictions, references)
 
     # ################
     # # Generate completions after sft training
