@@ -4,7 +4,7 @@
 # Charles Colab script
 !python eval/inference_trained_policy.py \
   --dataset_name trl-internal-testing/descriptiveness-sentiment-trl-style \
-  --model_name_or_path meta-llama/Llama-3.2-1B-Instruct \
+  --model_name_or_path openai-community/gpt2 \
   --reward_model_path meta-llama/Llama-3.2-1B-Instruct \
   --sft_model_path meta-llama/Llama-3.2-1B-Instruct \
   --use_peft \
