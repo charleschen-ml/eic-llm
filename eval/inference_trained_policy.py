@@ -44,7 +44,8 @@ from trl import (
 from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 
 # Paths
-eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json"
+eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json" # eval set path
+adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # lora adapter path
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
@@ -184,7 +185,6 @@ if __name__ == "__main__":
     ################
 
     # Load sft-trained peft model
-    adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-sft"
     peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
     peft_sft.eval()
 
