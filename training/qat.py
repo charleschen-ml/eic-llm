@@ -141,8 +141,10 @@ def main(script_args, training_args, model_args):
 
     # Create model
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, **model_kwargs)
+    model.to("cuda")  # ✅ move to GPU before quantizing
+
+    # Apply quantization
     if USE_QUANTIZATION:
-        model.to("cuda")  # ✅ move to GPU before quantizing
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
 
