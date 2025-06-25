@@ -102,7 +102,8 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
 
             def quantized_forward(self, input):
                 weight = self._quantized_weights[self._active_bit]
-                return nn.functional.linear(input, weight, self.bias)
+                return nn.functional.linear(input, weight, # put bias on the same device as the layer itself
+                                            self.bias.to(input.device) if self.bias is not None else None)
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
