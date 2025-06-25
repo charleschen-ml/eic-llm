@@ -120,8 +120,9 @@ def set_active_bitwidths(model, bit_config_dict):
                     module._active_bit = bit_config_dict[key]
 
 def sft_preprocess(df):
+    eos = tokenizer.eos_token if tokenizer is not None else ""
     return {
-        "text": df["context"].strip() + "\n" + df["question"].strip() + "\n" + df["answers"]["text"][0].strip()
+        "text": df["context"].strip() + "\n" + df["question"].strip() + "\n" + df["answers"]["text"][0].strip() + eos
     }
 
 def main(script_args, training_args, model_args):
