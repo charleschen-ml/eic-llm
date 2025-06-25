@@ -167,10 +167,11 @@ if __name__ == "__main__":
             )
 
         generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
+        generated_truncated = generated.split("\n")[0].strip()
 
         predictions.append({
             "id": qid,
-            "prediction_text": generated
+            "prediction_text": generated_truncated
         })
 
         references.append({
@@ -218,10 +219,11 @@ if __name__ == "__main__":
             )
 
         generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
+        generated_truncated = generated.split("\n")[0].strip()
 
         predictions.append({
             "id": qid,
-            "prediction_text": generated
+            "prediction_text": generated_truncated
         })
 
         references.append({
