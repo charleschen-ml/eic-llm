@@ -119,10 +119,10 @@ def set_active_bitwidths(model, bit_config_dict):
                 if key in name and hasattr(module, "_quantized_weights"):
                     module._active_bit = bit_config_dict[key]
 
-def sft_preprocess(df):
-    eos = tokenizer.eos_token if tokenizer is not None else ""
+def sft_preprocess(example, tokenizer):
+    answer = example["answers"]["text"][0].strip()
     return {
-        "text": df["context"].strip() + "\n" + df["question"].strip() + "\n" + df["answers"]["text"][0].strip() + eos
+        "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
 
 def main(script_args, training_args, model_args):
@@ -153,6 +153,7 @@ def main(script_args, training_args, model_args):
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True
     )
+    eos = tokenizer.eos_token if tokenizer is not None else ""
 
     ################
     # Dataset
@@ -163,13 +164,13 @@ def main(script_args, training_args, model_args):
     if MAX_DATASET_SIZE > 1:
         # 80/20 split
         split = dataset.train_test_split(test_size=0.2, seed=42)
-        train_dataset = split["train"].map(sft_preprocess)
-        eval_dataset = split["test"].map(sft_preprocess)
+        train_dataset = split["train"].map(lambda x: sft_preprocess(x, tokenizer))
+        eval_dataset = split["test"].map(lambda x: sft_preprocess(x, tokenizer))
         print(f"Train size: {len(train_dataset)}")
         print(f"Validation size: {len(eval_dataset)}")
     else:
         # Don't split if dataset has only 1 example
-        train_dataset = dataset.map(sft_preprocess)
+        train_dataset = split["train"].map(lambda x: sft_preprocess(x, tokenizer))
         eval_dataset = None
         print(f"Train size: {len(train_dataset)}")
         print("Validation set not created (MAX_DATASET_SIZE <= 1)")
