@@ -147,7 +147,7 @@ if __name__ == "__main__":
         question = example["question"].strip()
         qid = example.get("id", f"id_{len(predictions)}")
         prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
-        # print(f"prompt = \n{prompt}")
+        print(f"prompt = \n{prompt}")
 
         inputs = tokenizer(
             prompt,
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         question = example["question"].strip()
         qid = example.get("id", f"id_{len(predictions)}")
         prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
-        # print(f"prompt = \n{prompt}")
+        print(f"prompt = \n{prompt}")
 
         inputs = tokenizer(
             prompt,
