@@ -72,7 +72,7 @@ from trl import (
 
 MAX_DATASET_SIZE = 2  # Total number of examples across train+validation
 USE_QUANTIZATION = True
-QUANT_BITS = 4
+QUANT_BITS = 8
 
 def quantize_tensor(tensor, num_bits=4):
     max_val = tensor.abs().max()
