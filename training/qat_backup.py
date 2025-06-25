@@ -74,7 +74,7 @@ MAX_DATASET_SIZE = 2  # Total number of examples across train+validation
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 
-def quantize_tensor(tensor, num_bits=4) -> object:
+def quantize_tensor(tensor, num_bits=4):
     max_val = tensor.abs().max()
     scale = max_val / (2 ** (num_bits - 1) - 1)
     tensor_quant = torch.round(tensor / scale).clamp(
@@ -83,38 +83,19 @@ def quantize_tensor(tensor, num_bits=4) -> object:
     tensor_dequant = tensor_quant * scale
     return tensor_dequant
 
-def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
-    """
-    For each nn.Linear layer, store quantized weights for multiple bit-widths
-    and use a runtime flag to choose the active one.
-    """
-    for name, module in model.named_modules():
+def patch_linear_forward_with_quantization(model, num_bits=4):
+    for module in model.modules():
         if isinstance(module, nn.Linear):
-            module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
-
-            # Precompute quantized weights
-            for b in bit_widths:
-                module._quantized_weights[b] = quantize_tensor(module.weight.data, num_bits=b)
-
-            module._active_bit = bit_widths[0]  # default
-            module._bit_choices = bit_widths
+            # Save original forward in case you want to restore later (optional)
+            original_forward = module.forward
 
             def quantized_forward(self, input):
-                weight = self._quantized_weights[self._active_bit]
-                return nn.functional.linear(input, weight, self.bias)
+                quantized_weight = quantize_tensor(self.weight, num_bits=num_bits)
+                diff = (self.weight - quantized_weight).abs().mean() # sanity check
+                print(f"[Quantize] Layer {self} mean abs difference due to quant: {diff:.6f}") # sanity check
+                return nn.functional.linear(input, quantized_weight, self.bias)
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
-
-def set_active_bitwidths(model, bit_config_dict):
-    """
-    bit_config_dict: dict mapping layer name (partial) to active bit-width
-    e.g., {"transformer.h.0": 4, "transformer.h.1": 8}
-    """
-    for name, module in model.named_modules():
-        if isinstance(module, nn.Linear):
-            for key in bit_config_dict:
-                if key in name and hasattr(module, "_quantized_weights"):
-                    module._active_bit = bit_config_dict[key]
 
 def sft_preprocess(df):
     return {
@@ -139,7 +120,7 @@ def main(script_args, training_args, model_args):
     # Create model
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, **model_kwargs)
     if USE_QUANTIZATION:
-        patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
+        patch_linear_forward_with_quantization(model, num_bits=QUANT_BITS)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
 
     # Create tokenizer
@@ -182,10 +163,6 @@ def main(script_args, training_args, model_args):
         processing_class=tokenizer,
         peft_config=get_peft_config(model_args),
     )
-
-    # Set bit-widths per layer dynamically (you can randomize or group as needed)
-    bit_config = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
-    set_active_bitwidths(model, bit_config)
 
     trainer.train()
 
