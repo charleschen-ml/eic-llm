@@ -75,13 +75,14 @@ USE_QUANTIZATION = True
 QUANT_BITS = 8
 
 def quantize_tensor(tensor, num_bits=4) -> object:
+    device = tensor.device # capture tensor device (gpu)
     max_val = tensor.abs().max()
     scale = max_val / (2 ** (num_bits - 1) - 1)
     tensor_quant = torch.round(tensor / scale).clamp(
         min=-(2 ** (num_bits - 1)), max=2 ** (num_bits - 1) - 1
     )
     tensor_dequant = tensor_quant * scale
-    return tensor_dequant
+    return tensor_dequant.to(device) # move tensor to gpu
 
 def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
     """
