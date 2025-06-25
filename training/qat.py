@@ -94,9 +94,9 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
             module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
 
             # Precompute quantized weights
-            device = module.weight.device # Ensure precomputed weights are on the same device as the layer itself
             for b in bit_widths:
-                module._quantized_weights[b] = quantize_tensor(module.weight.data.to(device), num_bits=b)
+                w = module.weight.detach().clone().to(module.weight.device)
+                module._quantized_weights[b] = quantize_tensor(w, num_bits=b)
 
             module._active_bit = bit_widths[0]  # default
             module._bit_choices = bit_widths
