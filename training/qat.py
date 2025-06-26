@@ -58,6 +58,7 @@ import torch.nn as nn
 from datasets import load_dataset
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 from transformers.models.auto.modeling_auto import MODEL_FOR_IMAGE_TEXT_TO_TEXT_MAPPING_NAMES
+from transformers.models.gpt2.modeling_gpt2 import Conv1D
 
 from trl import (
     ModelConfig,
@@ -91,7 +92,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if isinstance(module, nn.Linear):
+        if isinstance(module, (nn.Linear, Conv1D)):
             module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
 
             # Precompute quantized weights
@@ -154,11 +155,10 @@ def main(script_args, training_args, model_args):
     if USE_QUANTIZATION:
         model.to("cuda")  # ✅ move to GPU before quantizing
         ### debug
-        from transformers.models.gpt2.modeling_gpt2 import Conv1D
-        print("\n🔍 Listing all Linear layers in model:\n")
-        for name, module in model.named_modules():
-            if isinstance(module, (nn.Linear, Conv1D)):
-                print(f"- {name}")
+        # print("\n🔍 Listing all Linear layers in model:\n")
+        # for name, module in model.named_modules():
+        #     if isinstance(module, (nn.Linear, Conv1D)):
+        #         print(f"- {name}")
         ### debug
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
