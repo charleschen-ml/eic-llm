@@ -98,12 +98,11 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
             # Precompute quantized weights
             for b in bit_widths:
                 w = module.weight.detach().clone().to(module.weight.device)
-                # module._quantized_weights[b] = quantize_tensor(w, num_bits=b) # To remove
                 q_w = quantize_tensor(w, num_bits=b)
                 mean_diff = (w - q_w).abs().mean().item()
                 max_before = w.abs().max().item()
-                print(
-                    f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_before:.4f}")
+                # print(
+                    # f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_before:.4f}")
                 module._quantized_weights[b] = q_w
 
             module._active_bit = bit_widths[0]  # default
@@ -111,7 +110,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
 
             def quantized_forward(self, input):
                 weight = self._quantized_weights[self._active_bit]
-                return nn.functional.linear(input, weight, # put bias on the same device as the layer itself
+                return nn.functional.linear(input, weight.T, # put bias on the same device as the layer itself
                                             self.bias.to(input.device) if self.bias is not None else None)
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
