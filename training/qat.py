@@ -70,7 +70,8 @@ from trl import (
     get_quantization_config,
 )
 
-MAX_DATASET_SIZE = 2  # Total number of examples across train+validation
+# Settings
+MAX_DATASET_SIZE = 100  # Total number of examples across train+validation
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 
@@ -194,7 +195,7 @@ def main(script_args, training_args, model_args):
     # Set bit-widths per layer dynamically (you can randomize or group as needed)
     config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
     config2 = {f"transformer.h.{i}": 4 for i in range(12)}
-    set_active_bitwidths(model, config2)
+    set_active_bitwidths(model, config1)
 
     trainer.train()
 
