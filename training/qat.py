@@ -192,8 +192,9 @@ def main(script_args, training_args, model_args):
     )
 
     # Set bit-widths per layer dynamically (you can randomize or group as needed)
-    bit_config = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
-    set_active_bitwidths(model, bit_config)
+    config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
+    # config2 = {f"transformer.h.{i}": 4 for i in range(12)}
+    set_active_bitwidths(model, config1)
 
     trainer.train()
 
