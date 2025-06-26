@@ -154,9 +154,10 @@ def main(script_args, training_args, model_args):
     if USE_QUANTIZATION:
         model.to("cuda")  # ✅ move to GPU before quantizing
         ### debug
+        from transformers.models.gpt2.modeling_gpt2 import Conv1D
         print("\n🔍 Listing all Linear layers in model:\n")
         for name, module in model.named_modules():
-            if isinstance(module, nn.Linear):
+            if isinstance(module, (nn.Linear, Conv1D)):
                 print(f"- {name}")
         ### debug
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
