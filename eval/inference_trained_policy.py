@@ -80,12 +80,6 @@ def score_squad(predictions, references):
 
 # Save inference outputs to csv
 def save_predictions_to_csv(predictions, references):
-    """
-    Save per-example EM and F1 scores to a CSV.
-
-    Uses global OUTPUT_CSV_PATH for output location.
-    Includes all references, comma-separated.
-    """
     metric = evaluate.load("squad")
     rows = []
 
