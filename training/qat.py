@@ -71,7 +71,7 @@ from trl import (
 )
 
 # Settings
-MAX_DATASET_SIZE = 10000  # Total number of examples across train+validation
+MAX_DATASET_SIZE = 10  # Total number of examples across train+validation
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 
@@ -153,6 +153,12 @@ def main(script_args, training_args, model_args):
     # Apply quantization
     if USE_QUANTIZATION:
         model.to("cuda")  # ✅ move to GPU before quantizing
+        ### debug
+        print("\n🔍 Listing all Linear layers in model:\n")
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear):
+                print(f"- {name}")
+        ### debug
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
 
