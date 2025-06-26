@@ -105,6 +105,7 @@ def save_predictions_to_csv(predictions, references):
             "exact_match": score["exact_match"],
             "f1_score": score["f1"]
         })
+        rows.sort(key=lambda x: x["f1_score"])  # sort by worst predictions
 
     with open(OUTPUT_CSV_PATH, "w", newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=["prediction", "reference", "exact_match", "f1_score"])
