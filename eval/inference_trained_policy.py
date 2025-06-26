@@ -125,8 +125,8 @@ if __name__ == "__main__":
     # Set quantization config to match training
     patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8])
     config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
-    # config2 = {f"transformer.h.{i}": 4 for i in range(12)}
-    set_active_bitwidths(base_model, config1)
+    config2 = {f"transformer.h.{i}": 4 for i in range(12)}
+    set_active_bitwidths(base_model, config2)
 
     # load peft config
     peft_config = get_peft_config(model_args)
