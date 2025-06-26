@@ -71,7 +71,7 @@ from trl import (
 )
 
 # Settings
-MAX_DATASET_SIZE = 100  # Total number of examples across train+validation
+MAX_DATASET_SIZE = 10000  # Total number of examples across train+validation
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 
