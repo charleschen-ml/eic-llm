@@ -59,7 +59,7 @@ OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_outp
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
-    dataset = [json.loads(line) for line in f]
+    dataset = [json.loads(line) for line in f][:10]
 print(f"Examples used for inference: {len(dataset)}")
 
 # Load SQuAD metric
