@@ -21,6 +21,7 @@
 import shutil
 import evaluate
 import json
+import csv
 from tqdm import tqdm
 import torch
 from peft import get_peft_model, PeftModel
@@ -54,6 +55,7 @@ from qat import (
 # Paths
 eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json" # train_set.json or eval_set.json
 adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or gpt2-sft
+OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
@@ -75,6 +77,39 @@ def score_squad(predictions, references):
     print(f"Exact Match: {results['exact_match']:.2f} ({num_correct}/{len(predictions)})")
     print(f"F1 Score: {results['f1']:.2f}")
     return results
+
+# Save inference outputs to csv
+def save_predictions_to_csv(predictions, references):
+    """
+    Save per-example EM and F1 scores to a CSV.
+
+    Uses global OUTPUT_CSV_PATH for output location.
+    Includes all references, comma-separated.
+    """
+    metric = evaluate.load("squad")
+    rows = []
+
+    for pred, ref in zip(predictions, references):
+        pred_text = pred["prediction_text"]
+        ref_texts = ref["answers"]["text"]
+        joined_refs = ", ".join([r.strip() for r in ref_texts])
+
+        score = metric.compute(predictions=[{"prediction_text": pred_text, "id": pred["id"]}],
+                               references=[{"answers": {"text": ref_texts}, "id": ref["id"]}])
+
+        rows.append({
+            "prediction": pred_text,
+            "reference": joined_refs,
+            "exact_match": score["exact_match"],
+            "f1_score": score["f1"]
+        })
+
+    with open(OUTPUT_CSV_PATH, "w", newline='', encoding='utf-8') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=["prediction", "reference", "exact_match", "f1_score"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"✅ Saved {len(rows)} results to {OUTPUT_CSV_PATH}")
 
 if __name__ == "__main__":
     # parse script arguments
@@ -247,3 +282,4 @@ if __name__ == "__main__":
         })
 
     results = score_squad(predictions, references)
+    save_predictions_to_csv(predictions, references)
