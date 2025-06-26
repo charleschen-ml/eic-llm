@@ -42,6 +42,13 @@ from trl import (
     get_quantization_config,
 )
 from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
+# Ensure inference quantization config matches that of QAT
+import sys
+sys.path.append("../training")  # make sure Python can find qat.py
+from qat import (
+    patch_linear_forward_with_switchable_quantization,
+    set_active_bitwidths
+)
 
 # Paths
 eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json" # eval set path
@@ -113,6 +120,11 @@ if __name__ == "__main__":
         model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code
     )
     print(f"Loaded base model path: {model_args.model_name_or_path}")
+
+    # Set quantization config to match training
+    patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8])
+    bit_config = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}
+    set_active_bitwidths(base_model, bit_config)
 
     # load peft config
     peft_config = get_peft_config(model_args)
