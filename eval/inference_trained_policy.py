@@ -159,7 +159,7 @@ if __name__ == "__main__":
     config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
     config2 = {f"transformer.h.{i}": 4 for i in range(12)}
     config3 = {f"transformer.h.{i}": 8 for i in range(12)}
-    set_active_bitwidths(base_model, config3)
+    set_active_bitwidths(base_model, config1)
 
     # load peft config
     peft_config = get_peft_config(model_args)
