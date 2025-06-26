@@ -110,7 +110,9 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
 
             def quantized_forward(self, input):
                 weight = self._quantized_weights[self._active_bit]
-                return nn.functional.linear(input, weight.T, # put bias on the same device as the layer itself
+                if weight.shape[1] != input.shape[-1]: 
+                    weight = weight.T # transpose if dim mismatch (for gpt2 internal layers e.g. c_attn)
+                return nn.functional.linear(input, weight, # put bias on the same device as the layer itself
                                             self.bias.to(input.device) if self.bias is not None else None)
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
