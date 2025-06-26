@@ -127,7 +127,7 @@ def set_active_bitwidths(model, bit_config_dict):
             for key in bit_config_dict:
                 if key in name and hasattr(module, "_quantized_weights"):
                     module._active_bit = bit_config_dict[key]
-                    print(f"[Quantize] {name} | Matched: {key} | Active bit: {bit_config_dict[key]}")
+                    # print(f"[Quantize] {name} | Matched: {key} | Active bit: {bit_config_dict[key]}")
 
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
