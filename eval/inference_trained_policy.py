@@ -94,8 +94,10 @@ def save_predictions_to_csv(predictions, references):
         ref_texts = ref["answers"]["text"]
         joined_refs = ", ".join([r.strip() for r in ref_texts])
 
-        score = metric.compute(predictions=[{"prediction_text": pred_text, "id": pred["id"]}],
-                               references=[{"answers": {"text": ref_texts}, "id": ref["id"]}])
+        score = metric.compute(
+            predictions=[{"prediction_text": pred_text, "id": pred["id"]}],
+            references=[{"answers": {"text": ref_texts, "answer_start": [0] * len(ref_texts)}, "id": ref["id"]}]
+        )
 
         rows.append({
             "prediction": pred_text,
