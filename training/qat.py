@@ -123,7 +123,7 @@ def set_active_bitwidths(model, bit_config_dict):
     e.g., {"transformer.h.0": 4, "transformer.h.1": 8}
     """
     for name, module in model.named_modules():
-        if isinstance(module, nn.Linear):
+        if isinstance(module, (nn.Linear, Conv1D)):
             for key in bit_config_dict:
                 if key in name and hasattr(module, "_quantized_weights"):
                     module._active_bit = bit_config_dict[key]
