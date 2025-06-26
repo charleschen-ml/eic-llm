@@ -44,7 +44,7 @@ from trl import (
 from trl.trainer.utils import SIMPLE_CHAT_TEMPLATE
 # Ensure inference quantization config matches that of QAT
 import sys
-sys.path.append("../training")  # make sure Python can find qat.py
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "training")))
 from qat import (
     patch_linear_forward_with_switchable_quantization,
     set_active_bitwidths
