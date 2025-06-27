@@ -74,7 +74,7 @@ from trl import (
 # Settings
 MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = False
-QUANT_BITS = 8
+# QUANT_BITS = 8
 
 def quantize_tensor(tensor, num_bits=4) -> object:
     device = tensor.device # capture tensor device (gpu)
@@ -162,7 +162,9 @@ def main(script_args, training_args, model_args):
         #     if isinstance(module, (nn.Linear, Conv1D)):
         #         print(f"- {name}")
         ### debug
+        print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
+        print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
 
     # Create tokenizer
