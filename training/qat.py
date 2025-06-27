@@ -126,7 +126,8 @@ def set_active_bitwidths(model, bit_config_dict):
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)):
             for key in bit_config_dict:
-                if re.fullmatch(f"{key}.*", name) and hasattr(module, "_quantized_weights"):
+                # if re.fullmatch(f"{key}.*", name) and hasattr(module, "_quantized_weights"):
+                if name.startswith(key) and hasattr(module, "_quantized_weights"):
                     module._active_bit = bit_config_dict[key]
                     print(f"[Quantize] {name} | Matched: {key} | Active bit: {bit_config_dict[key]}")
 
