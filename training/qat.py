@@ -101,8 +101,8 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
                 q_w = quantize_tensor(w, num_bits=b)
                 mean_diff = (w - q_w).abs().mean().item()
                 max_before = w.abs().max().item()
-                # print(
-                    # f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_before:.4f}")
+                print(
+                    f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_before:.4f}")
                 module._quantized_weights[b] = q_w
 
             module._active_bit = bit_widths[0]  # default
@@ -127,7 +127,7 @@ def set_active_bitwidths(model, bit_config_dict):
             for key in bit_config_dict:
                 if key in name and hasattr(module, "_quantized_weights"):
                     module._active_bit = bit_config_dict[key]
-                    # print(f"[Quantize] {name} | Matched: {key} | Active bit: {bit_config_dict[key]}")
+                    print(f"[Quantize] {name} | Matched: {key} | Active bit: {bit_config_dict[key]}")
 
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
