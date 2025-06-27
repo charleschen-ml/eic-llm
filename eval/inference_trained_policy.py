@@ -245,7 +245,7 @@ if __name__ == "__main__":
         context = example["context"].strip()
         question = example["question"].strip()
         qid = example.get("id", f"id_{len(predictions)}")
-        prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
+        prompt = f"{example['context'].strip()}\n{example['question'].strip()\n}"
         # print(f"prompt = \n{prompt}")
 
         inputs = tokenizer(
