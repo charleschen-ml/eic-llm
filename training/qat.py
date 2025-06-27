@@ -74,7 +74,7 @@ from trl import (
 # Settings
 MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
-# QUANT_BITS = 8
+QUANT_BITS = 8
 
 def quantize_tensor(tensor, num_bits=4) -> object:
     device = tensor.device # capture tensor device (gpu)
