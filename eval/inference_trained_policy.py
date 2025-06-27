@@ -53,7 +53,7 @@ from qat import (
 )
 
 # Paths
-eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json" # train_set.json or eval_set.json
+eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json" # train_set.json or eval_set.json
 adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or gpt2-sft
 OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
 
