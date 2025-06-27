@@ -73,7 +73,7 @@ from trl import (
 
 # Settings
 MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
-USE_QUANTIZATION = True
+USE_QUANTIZATION = False
 QUANT_BITS = 8
 
 def quantize_tensor(tensor, num_bits=4) -> object:
