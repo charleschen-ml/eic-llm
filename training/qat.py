@@ -119,17 +119,12 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
 def set_active_bitwidths(model, bit_config_dict):
-    """
-    bit_config_dict: dict mapping layer name (partial) to active bit-width
-    e.g., {"transformer.h.0": 4, "transformer.h.1": 8}
-    """
     for name, module in model.named_modules():
-        if isinstance(module, (nn.Linear, Conv1D)):
-            for key in bit_config_dict:
-                # if re.fullmatch(f"{key}.*", name) and hasattr(module, "_quantized_weights"):
-                if name.startswith(key) and hasattr(module, "_quantized_weights"):
-                    module._active_bit = bit_config_dict[key]
-                    print(f"[Quantize] {name} | Matched: {key} | Active bit: {bit_config_dict[key]}")
+        if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
+            layer_id = ".".join(name.split(".")[:3])
+            if layer_id in bit_config_dict:
+                module._active_bit = bit_config_dict[layer_id]
+                print(f"[Quantize] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
 
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
