@@ -53,9 +53,12 @@ from qat import (
 )
 
 # Paths
-eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json" #  eval_set.json (regular) or train_set.json (overfit)
+eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json" #  eval_set.json (regular) or train_set.json (overfit)
 adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or gpt2-sft
 OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
+
+# Settings
+USE_QUANTIZATION = False
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
@@ -155,7 +158,6 @@ if __name__ == "__main__":
     print(f"Loaded base model path: {model_args.model_name_or_path}")
 
     # Set quantization config to match training
-    USE_QUANTIZATION = False
     if USE_QUANTIZATION:
         patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8])
         config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
