@@ -58,7 +58,7 @@ adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or g
 OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
 
 # Settings
-USE_QUANTIZATION = False
+USE_QUANTIZATION = True
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
