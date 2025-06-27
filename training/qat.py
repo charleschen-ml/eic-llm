@@ -93,6 +93,9 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
+        if name == "lm_head":
+            print(f"[Quantize] {name} | SKIPPED (lm_head)")
+            continue  # ← Skip quantizing lm_head
         if isinstance(module, (nn.Linear, Conv1D)):
             module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
 
