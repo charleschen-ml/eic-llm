@@ -168,7 +168,7 @@ def main(script_args, training_args, model_args):
         #         print(f"- {name}")
         ### debug
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
+        patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 16])
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
 
