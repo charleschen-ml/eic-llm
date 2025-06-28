@@ -93,7 +93,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not name.startswith("transformer.h.6."):
+        if not name.startswith("transformer.h.11."):
             continue  # only quantize transformer.h.0.*
         # if name == "lm_head": # To remove
         #     print(f"[Quantize] {name} | SKIPPED (lm_head)")
@@ -125,7 +125,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
 
 def set_active_bitwidths(model, bit_config_dict):
     bit_config_dict = { # debug: only quantize transformer.h.0.*
-        "transformer.h.6": 8
+        "transformer.h.11": 8
     }
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
