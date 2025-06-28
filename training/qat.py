@@ -87,7 +87,7 @@ def quantize_tensor(tensor, num_bits=4) -> object:
     tensor_dequant = tensor_quant * scale
     return tensor_dequant.to(device) # move tensor to gpu
 
-def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8]):
+def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 16]):
     """
     For each nn.Linear layer, store quantized weights for multiple bit-widths
     and use a runtime flag to choose the active one.
