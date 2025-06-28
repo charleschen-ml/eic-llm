@@ -125,7 +125,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
 
 def set_active_bitwidths(model, bit_config_dict):
     bit_config_dict = { # debug: only quantize transformer.h.0.*
-        "transformer.h.0": 16
+        "transformer.h.6": 16
     }
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
