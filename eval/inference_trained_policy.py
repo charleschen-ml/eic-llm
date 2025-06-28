@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     # Set quantization config to match training
     if USE_QUANTIZATION:
-        patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8])
+        patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8, 16])
         config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
         config2 = {f"transformer.h.{i}": 4 for i in range(12)}
         config3 = {f"transformer.h.{i}": 8 for i in range(12)}
