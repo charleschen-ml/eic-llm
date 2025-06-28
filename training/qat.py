@@ -93,7 +93,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not name.startswith("transformer.h.0."):
+        if not name.startswith("transformer.h.6."):
             continue  # only quantize transformer.h.0.*
         # if name == "lm_head": # To remove
         #     print(f"[Quantize] {name} | SKIPPED (lm_head)")
