@@ -1,6 +1,6 @@
 ## Step 4 – Implementation Details
 
-### ✅ What is the task accuracy achieved after applying various quantization bit-width configurations to the SQuAD dataset?
+### What is the task accuracy achieved after applying various quantization bit-width configurations to the SQuAD dataset?
 
 I evaluated Exact Match (EM) and F1 scores after fine-tuning GPT-2 on the SQuAD dataset under multiple quantization setups:
 
@@ -22,7 +22,7 @@ I evaluated Exact Match (EM) and F1 scores after fine-tuning GPT-2 on the SQuAD 
 
 ---
 
-### ✅ How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
+### How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
 
 To determine optimal configurations, I explored bit-width and layer sensitivity through:
 
@@ -41,7 +41,7 @@ These results suggest a promising direction in using **learned or greedy per-lay
 
 ---
 
-### ✅ A motivation behind switchable quantization is to support diverse layer-wise quantization configurations simultaneously, accommodating different resource allocation needs. Could you suggest additional training objectives that could more effectively facilitate the mechanism for switching quantization bit-widths?
+### A motivation behind switchable quantization is to support diverse layer-wise quantization configurations simultaneously, accommodating different resource allocation needs. Could you suggest additional training objectives that could more effectively facilitate the mechanism for switching quantization bit-widths?
 
 To better enable dynamic, switchable quantization, the following training objectives could be introduced:
 
