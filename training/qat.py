@@ -134,6 +134,50 @@ def set_active_bitwidths(model, bit_config_dict):
                 module._active_bit = bit_config_dict[layer_id]
                 print(f"[Quantize] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
 
+def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
+    """
+    For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
+    During forward pass, apply quantized weight and the matching LoRA adapter.
+    """
+    for name, module in model.named_modules():
+        # Only apply to transformer.h.0.* layers
+        if not name.startswith("transformer.h.0."):
+            continue
+
+        # Apply only to Linear layers that were quantized
+        if isinstance(module, nn.Linear) and hasattr(module, "_quantized_weights"):
+            module._lora_adapters = nn.ModuleDict()
+
+            # Create one LoRA module per bit-width (e.g., 4-bit and 8-bit)
+            for b in bit_widths:
+                r = 8  # LoRA rank; can tune this
+                lora_down = nn.Linear(module.in_features, r, bias=False)
+                lora_up = nn.Linear(r, module.out_features, bias=False)
+                module._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+
+            # Set default active bit-width
+            module._active_bit = bit_widths[0]
+
+            # Patch the forward pass to use selected quantized weight + matching LoRA
+            def forward_with_quant_and_lora(self, input):
+                # Get quantized weight for current bit-width
+                w = self._quantized_weights[self._active_bit]
+
+                # Get the LoRA adapter for current bit-width
+                lora = self._lora_adapters[str(self._active_bit)]
+
+                # Transpose if needed for compatibility
+                if w.shape[1] != input.shape[-1]:
+                    w = w.T
+
+                # Base output + LoRA output
+                base_out = nn.functional.linear(input, w, self.bias)
+                lora_out = lora(input)
+                return base_out + lora_out
+
+            # Replace original forward function
+            module.forward = forward_with_quant_and_lora.__get__(module, nn.Linear)
+
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
     return {
@@ -171,6 +215,7 @@ def main(script_args, training_args, model_args):
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 16])
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
+        add_bitwise_lora_adapters(model, bit_widths=[4, 8]) # switchable precision
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
