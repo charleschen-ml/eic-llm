@@ -178,6 +178,11 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
             # Replace original forward function
             module.forward = forward_with_quant_and_lora.__get__(module, nn.Linear)
 
+def set_random_bitwidths(model, bit_choices=[4, 8]):
+    for name, module in model.named_modules():
+        if name.startswith("transformer.h.0") and hasattr(module, "_quantized_weights"):
+            module._active_bit = random.choice(bit_choices)
+
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
     return {
@@ -215,7 +220,7 @@ def main(script_args, training_args, model_args):
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 16])
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
-        add_bitwise_lora_adapters(model, bit_widths=[4, 8]) # switchable precision
+        add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]) # add switchable precision
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -264,7 +269,8 @@ def main(script_args, training_args, model_args):
     config2 = {f"transformer.h.{i}": 4 for i in range(12)}
     config3 = {f"transformer.h.{i}": 8 for i in range(12)}
     if USE_QUANTIZATION:
-        set_active_bitwidths(model, config3)
+        # set_active_bitwidths(model, config3) # static training
+        set_random_bitwidths(model) # dynamic training
 
     trainer.train()
 
