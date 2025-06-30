@@ -76,7 +76,7 @@ from trl import (
 )
 
 # Settings
-MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
+MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 USE_BITWISE_LORA = True
