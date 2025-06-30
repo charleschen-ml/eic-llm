@@ -1,4 +1,4 @@
-# Inference using 1.) base model, 2.) sft-trained model
+# Inference using 1.) base model, 2.) sft-trained model,
 
 """
 # Charles Colab script
