@@ -52,6 +52,9 @@ from qat import (
     set_active_bitwidths,
     add_bitwise_lora_adapters
 )
+import os
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
+torch.use_deterministic_algorithms(True)
 
 # Paths
 eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json" #  eval_set.json (regular) or train_set.json (overfit)
