@@ -147,13 +147,14 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
         # Only apply each linear layer in this module
         if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
             continue
-        print(f"{name}")
+        # print(f"{name}") # debug
         # Apply only to Linear layers that were quantized
         if isinstance(module, nn.Linear) and hasattr(module, "_quantized_weights"):
             module._lora_adapters = nn.ModuleDict()
 
             # Create one LoRA module per bit-width (e.g., 4-bit and 8-bit)
             for b in bit_widths:
+                print(f"b = {b}")  # debug
                 r = 8  # LoRA rank; can tune this
                 lora_down = nn.Linear(module.in_features, r, bias=False)
                 lora_up = nn.Linear(r, module.out_features, bias=False)
