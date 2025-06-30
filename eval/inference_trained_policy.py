@@ -166,8 +166,9 @@ if __name__ == "__main__":
     if USE_QUANTIZATION:
         patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8, 16])
         add_bitwise_lora_adapters(base_model, bit_widths=[4, 8])
-        state_dict = torch.load(adapter_path, map_location="cpu")
+        state_dict = torch.load(f"{adapter_path}/pytorch_model.bin", map_location="cpu")
         base_model.load_state_dict(state_dict)
+        base_model.to("cuda")
         set_active_bitwidths(base_model, config3)
         base_model.eval()
 
