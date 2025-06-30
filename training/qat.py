@@ -284,7 +284,7 @@ def main(script_args, training_args, model_args):
         print(type(model))                         # should show PeftModel
         print(type(model.base_model))             # should show PeftModelForCausalLM
         print(type(model.base_model.model))       # should show GPT2LMHeadModel
-        torch.save(model.base_model.model.state_dict(), bitwise_lora_adapter_path)
+        torch.save(model.base_model.state_dict(), bitwise_lora_adapter_path)
     if training_args.push_to_hub:
         trainer.push_to_hub(dataset_name=script_args.dataset_name)
 
