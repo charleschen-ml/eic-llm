@@ -58,6 +58,7 @@ import re
 import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
+import random
 
 from datasets import load_dataset
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
