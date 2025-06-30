@@ -77,7 +77,7 @@ from trl import (
 )
 
 # Settings
-MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
+MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 USE_BITWISE_LORA = True
@@ -101,11 +101,8 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not name.startswith("transformer.h.11."):
-            continue  # only quantize transformer.h.0.*
-        # if name == "lm_head": # To remove
-        #     print(f"[Quantize] {name} | SKIPPED (lm_head)")
-        #     continue  # ← Skip quantizing lm_head
+        # if not name.startswith("transformer.h.11."):
+        #     continue  # only quantize transformer.h.11.*
         if isinstance(module, (nn.Linear, Conv1D)):
             module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
 
@@ -147,8 +144,8 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
     for name, module in model.named_modules():
         # Only apply each linear layer in this module
-        if not name.startswith("transformer.h.11."):
-            continue
+        # if not name.startswith("transformer.h.11."):
+        #     continue
 
         # Apply only to Linear layers that were quantized
         if isinstance(module, nn.Linear) and hasattr(module, "_quantized_weights"):
@@ -232,10 +229,10 @@ def main(script_args, training_args, model_args):
     if USE_QUANTIZATION:
         model.to("cuda")  # ✅ move to GPU before quantizing
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 16])
+        patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
-        add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]) # add switchable precision
+        add_bitwise_lora_adapters(model, bit_widths=[4, 8]) # add switchable precision
     if USE_BITWISE_LORA:
         callbacks = [BitwidthRandomizationCallback(model)]
     else:
