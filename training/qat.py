@@ -52,7 +52,6 @@ python trl/scripts/sft.py \
 """
 
 import argparse
-from eval.inference_trained_policy import bitwise_lora_adapter_path
 import torch
 import torch.nn as nn
 import re
