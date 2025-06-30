@@ -63,6 +63,7 @@ from datasets import load_dataset
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 from transformers.models.auto.modeling_auto import MODEL_FOR_IMAGE_TEXT_TO_TEXT_MAPPING_NAMES
 from transformers.models.gpt2.modeling_gpt2 import Conv1D
+from transformers import TrainerCallback
 
 from trl import (
     ModelConfig,
@@ -188,6 +189,21 @@ def set_random_bitwidths(model, bit_choices=[4, 8]):
         if name.startswith("transformer.h.0") and hasattr(module, "_quantized_weights"):
             module._active_bit = random.choice(bit_choices)
 
+# Custom callback to randomize bitwidths before each train step
+class BitwidthRandomizationCallback(TrainerCallback):
+    def __init__(self, model, bit_choices=(4, 8)):
+        self.model = model
+        self.bit_choices = bit_choices
+
+    def on_step_begin(self, args, state, control, **kwargs):
+        # Randomly assign a bitwidth to each supported layer
+        bit_config = {}
+        for name, module in self.model.named_modules():
+            if hasattr(module, "_quantized_weights"):
+                layer_key = name.split(".weight")[0].rsplit(".", 1)[0]
+                bit_config[layer_key] = random.choice(self.bit_choices)
+        set_active_bitwidths(self.model, bit_config)
+
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
     return {
@@ -215,17 +231,15 @@ def main(script_args, training_args, model_args):
     # Apply quantization
     if USE_QUANTIZATION:
         model.to("cuda")  # ✅ move to GPU before quantizing
-        ### debug
-        # print("\n🔍 Listing all Linear layers in model:\n")
-        # for name, module in model.named_modules():
-        #     if isinstance(module, (nn.Linear, Conv1D)):
-        #         print(f"- {name}")
-        ### debug
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 16])
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
         add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]) # add switchable precision
+    if USE_BITWISE_LORA:
+        callbacks = [BitwidthRandomizationCallback(model)]
+    else:
+        callbacks = []
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -267,6 +281,7 @@ def main(script_args, training_args, model_args):
         eval_dataset=eval_dataset, # dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
         processing_class=tokenizer,
         peft_config=get_peft_config(model_args),
+        callbacks = callbacks
     )
 
     # Set bit-widths per layer dynamically (you can randomize or group as needed)
@@ -274,9 +289,9 @@ def main(script_args, training_args, model_args):
     config2 = {f"transformer.h.{i}": 4 for i in range(12)}
     config3 = {f"transformer.h.{i}": 8 for i in range(12)}
     config4 = {f"transformer.h.11": 8}
-    if USE_QUANTIZATION:
+    if USE_QUANTIZATION and not USE_BITWISE_LORA:
         set_active_bitwidths(model, config4) # static training
-        # set_random_bitwidths(model) # dynamic training
+        # set_random_bitwidths(model) # dynamic training (deprecated)
 
     trainer.train()
 
