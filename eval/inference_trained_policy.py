@@ -59,6 +59,7 @@ OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_outp
 
 # Settings
 USE_QUANTIZATION = True
+USE_BITWISE_LORA = True
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
@@ -237,8 +238,11 @@ if __name__ == "__main__":
     ################
 
     # Load sft-trained peft model
-    peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
-    peft_sft.eval()
+    if USE_BITWISE_LORA:
+        peft_sft = base_model # use base model for bitwise lora
+    else:
+        peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
+        peft_sft.eval()
 
     # Inference loop
     predictions, references = [], []
