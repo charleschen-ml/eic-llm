@@ -132,9 +132,6 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
 def set_active_bitwidths(model, bit_config_dict):
-    bit_config_dict = { # debug: only quantize transformer.h.0.*
-        "transformer.h.11": 8
-    }
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             layer_id = ".".join(name.split(".")[:3])
@@ -149,7 +146,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
     for name, module in model.named_modules():
         # Only apply to transformer.h.0.* layers
-        if not name.startswith("transformer.h.0."):
+        if not name.startswith("transformer.h.11."):
             continue
 
         # Apply only to Linear layers that were quantized
@@ -276,9 +273,10 @@ def main(script_args, training_args, model_args):
     config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
     config2 = {f"transformer.h.{i}": 4 for i in range(12)}
     config3 = {f"transformer.h.{i}": 8 for i in range(12)}
+    config4 = {f"transformer.h.11": 8}
     if USE_QUANTIZATION:
-        # set_active_bitwidths(model, config3) # static training
-        set_random_bitwidths(model) # dynamic training
+        set_active_bitwidths(model, config4) # static training
+        # set_random_bitwidths(model) # dynamic training
 
     trainer.train()
 
