@@ -154,7 +154,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
 
             # Create one LoRA module per bit-width (e.g., 4-bit and 8-bit)
             for b in bit_widths:
-                print(f"b = {b}")  # debug
+                print(f"bit_width = {b}")  # debug
                 r = 8  # LoRA rank; can tune this
                 lora_down = nn.Linear(module.in_features, r, bias=False)
                 lora_up = nn.Linear(r, module.out_features, bias=False)
