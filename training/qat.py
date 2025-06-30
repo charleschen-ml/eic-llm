@@ -52,6 +52,7 @@ python trl/scripts/sft.py \
 """
 
 import argparse
+from eval.inference_trained_policy import bitwise_lora_adapter_path
 import torch
 import torch.nn as nn
 import re
@@ -76,6 +77,10 @@ from trl import (
 MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 QUANT_BITS = 8
+USE_BITWISE_LORA = True
+
+# Paths
+bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
 
 def quantize_tensor(tensor, num_bits=4) -> object:
     device = tensor.device # capture tensor device (gpu)
@@ -276,6 +281,8 @@ def main(script_args, training_args, model_args):
 
     # Save and push to hub
     trainer.save_model(training_args.output_dir)
+    if USE_BITWISE_LORA:
+        torch.save(model.state_dict(), bitwise_lora_adapter_path)
     if training_args.push_to_hub:
         trainer.push_to_hub(dataset_name=script_args.dataset_name)
 

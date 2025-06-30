@@ -57,6 +57,7 @@ from qat import (
 eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json" #  eval_set.json (regular) or train_set.json (overfit)
 adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or gpt2-sft
 OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
+bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
 
 # Settings
 USE_QUANTIZATION = True
@@ -166,7 +167,7 @@ if __name__ == "__main__":
     if USE_QUANTIZATION:
         patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8, 16])
         add_bitwise_lora_adapters(base_model, bit_widths=[4, 8])
-        state_dict = torch.load(f"{adapter_path}/pytorch_model.bin", map_location="cpu")
+        state_dict = torch.load(bitwise_lora_adapter_path, map_location="cpu")
         base_model.load_state_dict(state_dict)
         base_model.to("cuda")
         set_active_bitwidths(base_model, config3)
