@@ -1,4 +1,4 @@
-# Copied from TRL as is to be run from Colab
+# Copied from TRL to be run from Colab
 
 # Copyright 2025 The HuggingFace Team. All rights reserved.
 #
