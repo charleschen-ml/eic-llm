@@ -102,8 +102,8 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        # if not name.startswith("transformer.h.11."):
-        #     continue  # only quantize transformer.h.11.*
+        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
+            continue
         if isinstance(module, (nn.Linear, Conv1D)):
             module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
 
@@ -145,8 +145,8 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
     for name, module in model.named_modules():
         # Only apply each linear layer in this module
-        # if not name.startswith("transformer.h.11."):
-        #     continue
+        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
+            continue
 
         # Apply only to Linear layers that were quantized
         if isinstance(module, nn.Linear) and hasattr(module, "_quantized_weights"):
