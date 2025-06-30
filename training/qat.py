@@ -125,6 +125,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
                 weight = self._quantized_weights[self._active_bit]
                 if weight.shape[1] != input.shape[-1]: 
                     weight = weight.T # transpose if dim mismatch (for gpt2 internal layers e.g. c_attn)
+                print(f"[Forward] {self} | Bit: {self._active_bit} | Weight shape: {weight.shape}")
                 return nn.functional.linear(input, weight, # put bias on the same device as the layer itself
                                             self.bias.to(input.device) if self.bias is not None else None)
 
