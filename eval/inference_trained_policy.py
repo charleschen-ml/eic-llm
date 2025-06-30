@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # load base model
     base_model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code
-    )
+    ).to("cuda")
     print(f"Loaded base model path: {model_args.model_name_or_path}")
 
     # Set quantization config to match training
