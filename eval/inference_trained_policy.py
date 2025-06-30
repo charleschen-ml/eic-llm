@@ -168,13 +168,14 @@ if __name__ == "__main__":
     config2 = {f"transformer.h.{i}": 4 for i in range(12)}
     config3 = {f"transformer.h.{i}": 8 for i in range(12)}
     config4 = {f"transformer.h.11": 8}
+    config5 = {f"transformer.h.11": 4}
     if USE_QUANTIZATION:
         patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8, 16])
         add_bitwise_lora_adapters(base_model, bit_widths=[4, 8])
         state_dict = torch.load(bitwise_lora_adapter_path, map_location="cpu")
         base_model.load_state_dict(state_dict)
         base_model.to("cuda")
-        set_active_bitwidths(base_model, config4)
+        set_active_bitwidths(base_model, config5)
         base_model.eval()
 
     # load peft config
