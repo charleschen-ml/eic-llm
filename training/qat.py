@@ -136,12 +136,10 @@ def set_active_bitwidths(model, bit_config_dict):
     print(f"[set_active_bitwidths] {bit_config_dict}") # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            # layer_id = ".".join(name.split(".")[:3])
-            # if layer_id in bit_config_dict:
-            #     module._active_bit = bit_config_dict[layer_id]
-            #     print(f"[Quantize] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
-            if name in bit_config_dict:
-                module._active_bit = bit_config_dict[name]
+            layer_id = ".".join(name.split(".")[:3])
+            if layer_id in bit_config_dict:
+                module._active_bit = bit_config_dict[layer_id]
+                print(f"[Quantize] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
 
 def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
@@ -190,9 +188,16 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
 
                 print(f"[Forward] {name} | Bit: {self._active_bit} | Weight shape: {w.shape}")
 
-                # Base output + LoRA output
+                # Base output
                 base_out = nn.functional.linear(input, w, self.bias)
-                lora_out = lora(input)
+
+                # LoRA output (guarded)
+                if hasattr(self, "_lora_adapters") and str(self._active_bit) in self._lora_adapters:
+                    lora = self._lora_adapters[str(self._active_bit)]
+                    lora_out = lora(input)
+                else:
+                    lora_out = 0
+
                 return base_out + lora_out
 
             # Replace original forward function
