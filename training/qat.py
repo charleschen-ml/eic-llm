@@ -54,6 +54,7 @@ python trl/scripts/sft.py \
 import argparse
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import re
 import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
