@@ -151,6 +151,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
         # Only apply each linear layer in this module
         if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
             continue
+        print(f"[DEBUG] Checking module: {name} | {type(module)}")
         if "lm_head" in name:
             print(f"[LoRA WARNING] Skipping {name} due to known shape mismatch.")
             continue
