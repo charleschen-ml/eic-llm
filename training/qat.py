@@ -133,6 +133,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
 def set_active_bitwidths(model, bit_config_dict):
+    print(f"[set_active_bitwidths] {bit_config_dict}") # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             layer_id = ".".join(name.split(".")[:3])
