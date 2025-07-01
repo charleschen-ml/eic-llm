@@ -156,11 +156,14 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
         # Apply only to Linear layers that were quantized
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             module._lora_adapters = nn.ModuleDict()
-            print(f"bit_widths = {bit_widths}")
+            # print(f"bit_widths = {bit_widths}") # debug
             # Create one LoRA module per bit-width (e.g., 4-bit and 8-bit)
             for b in bit_widths:
-                print(f"bit_width = {b}")  # debug
+                # print(f"bit_width = {b}")  # debug
                 r = 8  # LoRA rank; can tune this
+                if module.weight.shape[1] == module.weight.shape[0] * 3:
+                    print(f"[LoRA WARNING] Skipping {name} due to shape mismatch risk.")
+                    continue
                 in_features = module.weight.shape[1]
                 out_features = module.weight.shape[0]
                 lora_down = nn.Linear(in_features, r, bias=False)
