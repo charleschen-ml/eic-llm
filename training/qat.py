@@ -151,15 +151,12 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
         # Only apply each linear layer in this module
         if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
             continue
-        # print(f"[DEBUG] Checking module: {name} | {type(module)}")
-        # print(f"[bitwise lora]{name}") # debug
+
         # Apply only to Linear layers that were quantized
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             module._lora_adapters = nn.ModuleDict()
-            # print(f"bit_widths = {bit_widths}") # debug
             # Create one LoRA module per bit-width (e.g., 4-bit and 8-bit)
             for b in bit_widths:
-                # print(f"bit_width = {b}")  # debug
                 r = 8  # LoRA rank; can tune this
                 if module.weight.shape[1] == module.weight.shape[0] * 3:
                     print(f"[LoRA WARNING] Skipping {name} due to shape mismatch risk.")
@@ -172,33 +169,6 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
 
             # Set default active bit-width
             module._active_bit = bit_widths[0]
-
-            # Patch the forward pass to use selected quantized weight + matching LoRA
-            # def forward_with_quant_and_lora(self, input):
-            #     print(f"[Forward] {name}") # debug
-            #     # Get quantized weight for current bit-width
-            #     w = self._quantized_weights[self._active_bit]
-
-            #     # Get the LoRA adapter for current bit-width
-            #     # lora = self._lora_adapters[str(self._active_bit)] # To remove
-
-            #     # Transpose if needed for compatibility
-            #     if w.shape[1] != input.shape[-1]:
-            #         w = w.T
-
-            #     print(f"[Forward] {name} | Bit: {self._active_bit} | Weight shape: {w.shape}")
-
-            #     # Base output
-            #     base_out = nn.functional.linear(input, w, self.bias)
-
-            #     # LoRA output (guarded)
-            #     if hasattr(self, "_lora_adapters") and str(self._active_bit) in self._lora_adapters:
-            #         lora = self._lora_adapters[str(self._active_bit)]
-            #         lora_out = lora(input)
-            #     else:
-            #         lora_out = 0
-
-            #     return base_out + lora_out
             
             def forward_with_quant_and_lora(module, input):
                 """
@@ -219,7 +189,6 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
 
                 # Apply LoRA if available and compatible
                 if hasattr(module, "_lora_adapters") and module._lora_adapters:
-                    # lora = module._lora_adapters.get(str(module._active_bit), None)
                     bit_key = str(module._active_bit)
                     lora = module._lora_adapters[bit_key] if bit_key in module._lora_adapters else None
                     print(f"[Forward] {name} | Bit: {bit_key}")
@@ -228,8 +197,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                             lora_out = lora(input)
                             output += lora_out
                         except RuntimeError as e:
-                            print(f"[LoRA ERROR] Skipping {name} due to shape mismatch: {e}")
-                            # Optionally add a warning/log entry here
+                            pass
                     else:
                         print(f"[LoRA] No LoRA adapter for bit {module._active_bit} in {module}")
                 return output
