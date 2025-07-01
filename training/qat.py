@@ -134,13 +134,14 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
 def set_active_bitwidths(model, bit_config_dict):
-    print(f"[set_active_start] {bit_config_dict}") # debug
+    print(f"[set_active] start: {bit_config_dict}") # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
+            print(f"[set_active] {name} is linear and has q_weights")
             layer_id = ".".join(name.split(".")[:3])
             if layer_id in bit_config_dict:
                 module._active_bit = bit_config_dict[layer_id]
-                print(f"[set_active_config] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
+                print(f"[set_active] config: {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
 
 def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
@@ -199,7 +200,6 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                     print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
                     if lora is not None:
                         print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
-                        print(f"name = {name}, layer_name = {module._layer_name}")
                         try:
                             lora_out = lora(input)
                             output += lora_out
@@ -212,10 +212,10 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
             # Replace original forward function
             module.forward = forward_with_quant_and_lora.__get__(module, type(module)) # type(module) to include conv1D
 
-def set_random_bitwidths(model, bit_choices=[4, 8]):
-    for name, module in model.named_modules():
-        if name.startswith("transformer.h.0") and hasattr(module, "_quantized_weights"):
-            module._active_bit = random.choice(bit_choices)
+# def set_random_bitwidths(model, bit_choices=[4, 8]): # To remove
+#     for name, module in model.named_modules():
+#         if name.startswith("transformer.h.0") and hasattr(module, "_quantized_weights"):
+#             module._active_bit = random.choice(bit_choices)
 
 # Custom callback to randomize bitwidths before each train step
 class BitwidthRandomizationCallback(TrainerCallback):
