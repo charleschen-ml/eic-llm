@@ -199,6 +199,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                     print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
                     if lora is not None:
                         print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
+                        print(f"name = {name}, layer_name = {module._layer_name}")
                         try:
                             lora_out = lora(input)
                             output += lora_out
