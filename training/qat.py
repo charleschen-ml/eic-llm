@@ -204,7 +204,9 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 return output
 
             # Replace original forward function
-            module.forward = forward_with_quant_and_lora.__get__(module, nn.Linear)
+            # module.forward = forward_with_quant_and_lora.__get__(module, nn.Linear)
+            module.forward = forward_with_quant_and_lora.__get__(module, type(module))
+
 
 def set_random_bitwidths(model, bit_choices=[4, 8]):
     for name, module in model.named_modules():
