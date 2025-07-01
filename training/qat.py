@@ -229,7 +229,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                             lora_out = lora(input)
                             output += lora_out
                         except RuntimeError as e:
-                            print(f"[LoRA ERROR] Skipping {module} due to shape mismatch: {e}")
+                            print(f"[LoRA ERROR] Skipping {name} due to shape mismatch: {e}")
                             # Optionally add a warning/log entry here
                     else:
                         print(f"[LoRA] No LoRA adapter for bit {module._active_bit} in {module}")
