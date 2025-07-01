@@ -133,15 +133,24 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
+# def set_active_bitwidths(model, bit_config_dict):
+#     print(f"[set_active] start: {bit_config_dict}") # debug
+#     for name, module in model.named_modules():
+#         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
+#             layer_id = ".".join(name.split(".")[:3])
+#             print(f"[set_active] {name} is linear and has q_weights | layer_id = {layer_id}")
+#             if layer_id in bit_config_dict:
+#                 module._active_bit = bit_config_dict[layer_id]
+#                 print(f"[set_active] config: {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
+
 def set_active_bitwidths(model, bit_config_dict):
-    print(f"[set_active] start: {bit_config_dict}") # debug
+    print(f"[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            layer_id = ".".join(name.split(".")[:3])
-            print(f"[set_active] {name} is linear and has q_weights | layer_id = {layer_id}")
-            if layer_id in bit_config_dict:
-                module._active_bit = bit_config_dict[layer_id]
-                print(f"[set_active] config: {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
+            print(f"[set_active] {name} is linear and has q_weights")
+            if name in bit_config_dict:
+                module._active_bit = bit_config_dict[name]
+                print(f"[set_active] config: {name} | Active bit: {bit_config_dict[name]}")
 
 def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
