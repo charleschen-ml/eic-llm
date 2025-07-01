@@ -209,6 +209,10 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 input = input[0] if isinstance(input, tuple) else input
 
                 weight = module._quantized_weights[module._active_bit]
+
+                # Transpose if needed for compatibility
+                if weight.shape[1] != input.shape[-1]:
+                    weight = weight.T
                 bias = module.bias
 
                 # Quantized output
