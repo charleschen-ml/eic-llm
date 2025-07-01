@@ -196,7 +196,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 if hasattr(module, "_lora_adapters") and module._lora_adapters:
 
                     lora = module._lora_adapters[bit_key] if bit_key in module._lora_adapters else None
-                    print(f"[Forward] {module._layer_name} | Bit: {bit_key}")
+                    print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
                     if lora is not None:
                         print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
                         try:
