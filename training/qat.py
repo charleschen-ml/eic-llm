@@ -180,7 +180,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 w = self._quantized_weights[self._active_bit]
 
                 # Get the LoRA adapter for current bit-width
-                lora = self._lora_adapters[str(self._active_bit)]
+                # lora = self._lora_adapters[str(self._active_bit)] # To remove
 
                 # Transpose if needed for compatibility
                 if w.shape[1] != input.shape[-1]:
