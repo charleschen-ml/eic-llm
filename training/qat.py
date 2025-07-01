@@ -136,10 +136,12 @@ def set_active_bitwidths(model, bit_config_dict):
     print(f"[set_active_bitwidths] {bit_config_dict}") # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            layer_id = ".".join(name.split(".")[:3])
-            if layer_id in bit_config_dict:
-                module._active_bit = bit_config_dict[layer_id]
-                print(f"[Quantize] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
+            # layer_id = ".".join(name.split(".")[:3])
+            # if layer_id in bit_config_dict:
+            #     module._active_bit = bit_config_dict[layer_id]
+            #     print(f"[Quantize] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
+            if name in bit_config_dict:
+                module._active_bit = bit_config_dict[name]
 
 def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
@@ -213,8 +215,7 @@ class BitwidthRandomizationCallback(TrainerCallback):
         for name, module in self.model.named_modules():
             if hasattr(module, "_quantized_weights") and "lm_head" not in name:
                 print(f"Randomly assigning to {name}")
-                layer_key = name.split(".weight")[0].rsplit(".", 1)[0]
-                bit_config[layer_key] = random.choice(self.bit_choices)
+                bit_config[name] = random.choice(self.bit_choices)
         set_active_bitwidths(self.model, bit_config)
 
 def sft_preprocess(example, tokenizer):
