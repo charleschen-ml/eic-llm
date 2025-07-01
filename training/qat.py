@@ -148,12 +148,12 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     During forward pass, apply quantized weight and the matching LoRA adapter.
     """
     for name, module in model.named_modules():
-    # for name, module in model.transformer.named_modules():
         # Only apply each linear layer in this module
         if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
             continue
         print(f"[DEBUG] Checking module: {name} | {type(module)}")
-        if "lm_head" in name:
+        # if "lm_head" in name:
+        if name == "lm_head":
             print(f"[LoRA WARNING] Skipping {name} due to known shape mismatch.")
             continue
         # print(f"[bitwise lora]{name}") # debug
@@ -257,7 +257,7 @@ class BitwidthRandomizationCallback(TrainerCallback):
         bit_config = {}
         for name, module in self.model.named_modules():
             if hasattr(module, "_quantized_weights") and "lm_head" not in name:
-                print(f"Randomly assigning to {name}")
+                # print(f"Randomly assigning to {name}")
                 bit_config[name] = random.choice(self.bit_choices)
         set_active_bitwidths(self.model, bit_config)
 
