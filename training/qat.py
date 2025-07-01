@@ -206,7 +206,7 @@ class BitwidthRandomizationCallback(TrainerCallback):
         # Randomly assign a bitwidth to each supported layer
         bit_config = {}
         for name, module in self.model.named_modules():
-            if hasattr(module, "_quantized_weights"):
+            if hasattr(module, "_quantized_weights") and "lm_head" not in name:
                 layer_key = name.split(".weight")[0].rsplit(".", 1)[0]
                 bit_config[layer_key] = random.choice(self.bit_choices)
         set_active_bitwidths(self.model, bit_config)
