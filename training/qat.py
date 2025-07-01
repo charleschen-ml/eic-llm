@@ -152,7 +152,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
             continue
         if any(skip in name for skip in ["lm_head", "wte"]):
             continue  # ✅ skip output and embedding layers
-        print(f"[bitwise lora]{name}") # debug
+        # print(f"[bitwise lora]{name}") # debug
         # Apply only to Linear layers that were quantized
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             module._lora_adapters = nn.ModuleDict()
@@ -175,6 +175,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
 
             # Patch the forward pass to use selected quantized weight + matching LoRA
             def forward_with_quant_and_lora(self, input):
+                print(f"[Forward] {name}") # debug
                 # Get quantized weight for current bit-width
                 w = self._quantized_weights[self._active_bit]
 
