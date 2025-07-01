@@ -228,8 +228,9 @@ class BitwidthRandomizationCallback(TrainerCallback):
         bit_config = {}
         for name, module in self.model.named_modules():
             if hasattr(module, "_quantized_weights") and "lm_head" not in name:
-                # print(f"Randomly assigning to {name}")
-                bit_config[name] = random.choice(self.bit_choices)
+                chosen_bit = random.choice(self.bit_choices)
+                print(f"[BitwidthRandomization] {name} <- {chosen_bit} bit")
+                bit_config[name] = chosen_bit
         set_active_bitwidths(self.model, bit_config)
 
 def sft_preprocess(example, tokenizer):
