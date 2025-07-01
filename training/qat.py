@@ -222,7 +222,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                     # lora = module._lora_adapters.get(str(module._active_bit), None)
                     bit_key = str(module._active_bit)
                     lora = module._lora_adapters[bit_key] if bit_key in module._lora_adapters else None
-
+                    print(f"[Forward] {name} | Bit: {bit_key}")
                     if lora is not None:
                         try:
                             lora_out = lora(input)
