@@ -117,7 +117,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
                 mean_diff = (w - q_w).abs().mean().item()
                 max_before = w.abs().max().item()
                 print(
-                    f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_before:.4f}")
+                    f"[Quantize Precompute] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_before:.4f}")
                 module._quantized_weights[b] = q_w
 
             module._active_bit = bit_widths[0]  # default
@@ -134,13 +134,13 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
 def set_active_bitwidths(model, bit_config_dict):
-    print(f"[set_active_bitwidths] {bit_config_dict}") # debug
+    print(f"[set_active_start] {bit_config_dict}") # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             layer_id = ".".join(name.split(".")[:3])
             if layer_id in bit_config_dict:
                 module._active_bit = bit_config_dict[layer_id]
-                print(f"[Quantize] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
+                print(f"[set_active_config] {name} | Matched: {layer_id} | Active bit: {bit_config_dict[layer_id]}")
 
 def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
