@@ -134,13 +134,13 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
 def set_active_bitwidths(model, bit_config_dict):
-    print(f"[set_active] start: {bit_config_dict}")  # debug
+    # print(f"[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            print(f"[set_active] {name} is linear and has q_weights")
+            # print(f"[set_active] {name} is linear and has q_weights")
             if name in bit_config_dict:
                 module._active_bit = bit_config_dict[name]
-                print(f"[set_active] config: {name} | Active bit: {bit_config_dict[name]}")
+                print(f"[set_active] successful config: {name} | Active bit: {bit_config_dict[name]}")
 
 def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
@@ -166,7 +166,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 lora_down = nn.Linear(in_features, r, bias=False)
                 lora_up = nn.Linear(r, out_features, bias=False)
                 module._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                print(f"Successfully created lora for layer {name} | {b} bits")
+                # print(f"[bitwise_lora] Successfully created lora for layer {name} | {b} bits")
 
             # Set default active bit-width
             module._active_bit = bit_widths[0]
@@ -179,7 +179,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 Assumes input is a tuple, as passed into nn.Module.forward hooks.
                 """
                 bit_key = str(module._active_bit)
-                print(f"[Forward] {module._layer_name} | Bit: {bit_key}")
+                # print(f"[Forward] {module._layer_name} | Bit: {bit_key}")
                 input = input[0] if isinstance(input, tuple) else input
 
                 weight = module._quantized_weights[module._active_bit]
@@ -196,9 +196,9 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 if hasattr(module, "_lora_adapters") and module._lora_adapters:
 
                     lora = module._lora_adapters[bit_key] if bit_key in module._lora_adapters else None
-                    print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
+                    # print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
                     if lora is not None:
-                        print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
+                        # print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
                         try:
                             lora_out = lora(input)
                             output += lora_out
@@ -228,7 +228,7 @@ class BitwidthRandomizationCallback(TrainerCallback):
         for name, module in self.model.named_modules():
             if hasattr(module, "_quantized_weights") and "lm_head" not in name:
                 chosen_bit = random.choice(self.bit_choices)
-                print(f"[BitwidthRandomization] {name} <- {chosen_bit} bit")
+                # print(f"[BitwidthRandomization] Prepare {name} <- {chosen_bit} bit")
                 bit_config[name] = chosen_bit
         set_active_bitwidths(self.model, bit_config)
 
