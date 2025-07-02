@@ -79,7 +79,7 @@ from trl import (
 )
 
 # Settings
-MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
+MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 USE_BITWISE_LORA = True
@@ -103,7 +103,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not any(name.startswith(f"transformer.h.{i}.") for i in [6, 11]):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
             continue
         if any(skip in name for skip in ["lm_head", "wte"]):
             continue  # ✅ skip output and embedding layers
