@@ -133,23 +133,23 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
+# def set_active_bitwidths(model, bit_config_dict): # To remove
+#     print(f"\n[set_active] start: {bit_config_dict}")  # debug
+#     for name, module in model.named_modules():
+#         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
+#             # print(f"[set_active] {name} is linear and has q_weights")
+#             if name in bit_config_dict:
+#                 module._active_bit = bit_config_dict[name]
+#                 print(f"[set_active] successfully configured: {name} | Active bit: {bit_config_dict[name]}")
+
 def set_active_bitwidths(model, bit_config_dict):
     print(f"\n[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            # print(f"[set_active] {name} is linear and has q_weights")
-            if name in bit_config_dict:
-                module._active_bit = bit_config_dict[name]
-                print(f"[set_active] successfully configured: {name} | Active bit: {bit_config_dict[name]}")
-
-# def set_active_bitwidths(model, bit_config_dict):
-#     print(f"\n[set_active] start: {bit_config_dict}")  # debug
-#     for name, module in model.named_modules():
-#         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-#             for prefix, bit in bit_config_dict.items():
-#                 if name.startswith(prefix):
-#                     module._active_bit = bit
-#                     print(f"[set_active] set {name} to {bit} bits")
+            for prefix, bit in bit_config_dict.items():
+                if name.startswith(prefix):
+                    module._active_bit = bit
+                    print(f"[set_active] set {name} to {bit} bits")
 
 def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
