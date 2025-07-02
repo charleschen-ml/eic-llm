@@ -149,7 +149,7 @@ def set_active_bitwidths(model, bit_config_dict):
             for prefix, bit in bit_config_dict.items():
                 if name.startswith(prefix):
                     module._active_bit = bit
-                    print(f"[set_active] set {name} to {bit} bits")
+                    # print(f"[set_active] set {name} to {bit} bits")
 
 # def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
 #     """
@@ -247,7 +247,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
 
             def forward_with_quant_and_lora(self, input):
                 bit_key = str(self._active_bit)
-                print(f"[Forward] {self._layer_name} | Bit: {bit_key}")
+                # print(f"[Forward] {self._layer_name} | Bit: {bit_key}")
                 input = input[0] if isinstance(input, tuple) else input
                 # print(f"[Forward] input shape: {input.shape}")  # debug
 
@@ -271,7 +271,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                     for b in self._bit_choices:
                         # print(f"[bitwise_lora] {self._layer_name} | shape = {self.weight.shape}")  # debug
                         if self.weight.shape[1] == self.weight.shape[0] * 3:
-                            print(f"[bitwise_lora] Skipping {self._layer_name} due to shape mismatch risk.")
+                            # print(f"[bitwise_lora] Skipping {self._layer_name} due to shape mismatch risk.")
                             continue
                         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
                         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
@@ -290,7 +290,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                         output += lora_out
                         print(f"[Forward] computed {self._layer_name} | Bit: {bit_key}")
                     except RuntimeError as e:
-                        print(f"[Forward] skipped {self._layer_name} | Bit: {bit_key} | {e}")
+                        # print(f"[Forward] skipped {self._layer_name} | Bit: {bit_key} | {e}")
                 else:
                     print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
 
