@@ -173,7 +173,7 @@ if __name__ == "__main__":
         patch_linear_forward_with_switchable_quantization(base_model, bit_widths=[4, 8, 16])
         add_bitwise_lora_adapters(base_model, bit_widths=[4, 8])
 
-        # Dummy forward to create LoRA modules
+        # Dummy forward to create LoRA modules, which are created at run time to fix matrix dim mismatch error
         dummy_input = tokenizer("hello", return_tensors="pt").to(base_model.device)
         _ = base_model(**dummy_input)
 
