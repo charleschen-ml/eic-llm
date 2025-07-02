@@ -278,7 +278,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                         # print(f"[bitwise_lora] lora_down shape: {lora_down.weight.shape}")  # debug
                         # print(f"[bitwise_lora] lora_up shape: {lora_up.weight.shape}")  # debug
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                        # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
+                        print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
                 # Apply LoRA if available and compatible
                 if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
@@ -288,9 +288,9 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                     try:
                         lora_out = self._lora_adapters[bit_key](input)
                         output += lora_out
-                        # print(f"[Forward] computed {self._layer_name} | Bit: {bit_key}")
+                        print(f"[Forward] Computed {self._layer_name} | Bit: {bit_key}")
                     except RuntimeError as e:
-                        # print(f"[Forward] skipped {self._layer_name} | Bit: {bit_key} | {e}")
+                        # print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
                         pass
                 else:
                     # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
