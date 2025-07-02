@@ -103,7 +103,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in [11]):
             continue
         if any(skip in name for skip in ["lm_head", "wte"]):
             continue  # ✅ skip output and embedding layers
@@ -149,7 +149,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
     for name, module in model.named_modules():
         # Only apply each linear layer in this module
-        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in [11]):
             continue
 
         # Apply only to Linear layers that were quantized
@@ -166,7 +166,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 lora_down = nn.Linear(in_features, r, bias=False)
                 lora_up = nn.Linear(r, out_features, bias=False)
                 module._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                # print(f"[bitwise_lora] Successfully created lora for layer {name} | {b} bits")
+                print(f"[bitwise_lora] Successfully created lora for layer {name} | {b} bits")
 
             # Set default active bit-width
             module._active_bit = bit_widths[0]
