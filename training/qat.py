@@ -202,6 +202,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                         try:
                             lora_out = lora(input)
                             output += lora_out
+                            print(f"[Forward] computed forward for {module._layer_name} | Bit: {bit_key}")
                         except RuntimeError as e:
                             pass
                     else:
