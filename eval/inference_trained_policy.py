@@ -175,7 +175,7 @@ if __name__ == "__main__":
         state_dict = torch.load(bitwise_lora_adapter_path, map_location="cpu")
         base_model.load_state_dict(state_dict)
         base_model.to("cuda")
-        set_active_bitwidths(base_model, config3)
+        set_active_bitwidths(base_model, config4)
         base_model.eval()
 
     # load peft config
