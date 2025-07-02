@@ -193,16 +193,20 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 bit_key = str(module._active_bit)
                 print(f"[Forward] {module._layer_name} | Bit: {bit_key}")
                 input = input[0] if isinstance(input, tuple) else input
+                print(f"[Forward] input shape: {input.shape}") # debug
 
                 weight = module._quantized_weights[module._active_bit]
+                print(f"[Forward] weight shape: {weight.shape}") # debug
 
                 # Transpose if needed for compatibility
                 if weight.shape[1] != input.shape[-1]:
                     weight = weight.T
+                    print(f"[Forward] transposed weight shape: {weight.shape}") # debug
                 bias = module.bias
 
                 # Quantized output
                 output = F.linear(input, weight, bias)
+                print(f"[Forward] output shape: {output.shape}") # debug
 
                 # Apply LoRA if available and compatible
                 if hasattr(module, "_lora_adapters") and module._lora_adapters:
