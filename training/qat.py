@@ -166,6 +166,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
             module._lora_adapters = nn.ModuleDict()
             # Create one LoRA module per bit-width (e.g., 4-bit and 8-bit)
             for b in bit_widths:
+                print(f"[bitwise_lora] {name} | [0] x [1] = {module.weight.shape[0]} x {module.weight.shape[1]}") # debug
                 r = 8  # LoRA rank; can tune this
                 if module.weight.shape[1] == module.weight.shape[0] * 3:
                     print(f"[LoRA WARNING] Skipping {name} due to shape mismatch risk.")
