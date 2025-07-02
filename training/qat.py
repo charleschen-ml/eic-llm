@@ -209,10 +209,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                     if lora is not None:
                         print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
                         try:
-                            orig_shape = input.shape
-                            reshaped_input = input.view(-1, orig_shape[-1])  # [batch * seq_len, in_features]
-                            lora_out = lora(reshaped_input).view(*orig_shape[:-1], -1)  # reshape back
-                            # lora_out = lora(input)
+                            lora_out = lora(input)
                             output += lora_out
                             print(f"[Forward] computed {module._layer_name} | Bit: {bit_key}")
                         except RuntimeError as e:
