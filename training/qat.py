@@ -235,7 +235,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
     for name, module in model.named_modules():
         # Only apply each linear layer in this module
-        if not any(name.startswith(f"transformer.h.{i}.") for i in [6, 11]):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
             continue
 
         # Apply only to Linear layers that were quantized
