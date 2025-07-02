@@ -213,7 +213,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                             output += lora_out
                             print(f"[Forward] computed {module._layer_name} | Bit: {bit_key}")
                         except RuntimeError as e:
-                            print(f"[Forward] skipped {module._layer_name} | Bit: {bit_key}")
+                            print(f"[Forward] skipped {module._layer_name} | Bit: {bit_key} | {e}")
                     else:
                         print(f"[LoRA] No LoRA adapter for bit {module._active_bit} in {module}")
                 return output
