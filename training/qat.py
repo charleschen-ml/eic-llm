@@ -176,7 +176,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 lora_down = nn.Linear(in_features, r, bias=False)
                 lora_up = nn.Linear(r, out_features, bias=False)
                 module._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                print(f"[bitwise_lora] Successfully created lora for layer {name} | {b} bits")
+                print(f"[bitwise_lora] Successfully created lora for layer {name} | {b} bits | shape: {in_features} x {out_features}")
 
             # Set default active bit-width
             module._active_bit = bit_widths[0]
