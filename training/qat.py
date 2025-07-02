@@ -188,7 +188,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 Assumes input is a tuple, as passed into nn.Module.forward hooks.
                 """
                 bit_key = str(module._active_bit)
-                # print(f"[Forward] {module._layer_name} | Bit: {bit_key}")
+                print(f"[Forward] {module._layer_name} | Bit: {bit_key}")
                 input = input[0] if isinstance(input, tuple) else input
 
                 weight = module._quantized_weights[module._active_bit]
@@ -205,9 +205,9 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                 if hasattr(module, "_lora_adapters") and module._lora_adapters:
 
                     lora = module._lora_adapters[bit_key] if bit_key in module._lora_adapters else None
-                    # print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
+                    print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
                     if lora is not None:
-                        # print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
+                        print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
                         try:
                             lora_out = lora(input)
                             output += lora_out
