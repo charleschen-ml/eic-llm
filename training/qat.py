@@ -91,7 +91,7 @@ USE_CYCLIC_BITWIDTH = False  # Enable/disable cyclic bit-width scheduling
 CYCLIC_PERIOD = 100  # Number of steps for one complete cycle
 
 # Paths
-bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
+bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
 
 def get_cyclic_bitwidth(step, period=CYCLIC_PERIOD, min_bit=min(BIT_CHOICES), max_bit=max(BIT_CHOICES)):
     """
@@ -493,8 +493,8 @@ def main(script_args, training_args, model_args):
         print("Validation set not created (MAX_DATASET_SIZE <= 1)")
     print("Example preprocessed train sample:")
     print(train_dataset[0]["text"])
-    eval_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json") # Save eval set for inference script
-    train_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json") # Save train set (for debug)
+    eval_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/nn/eic_llm/eval_set.json") # Save eval set for inference script
+    train_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/nn/eic_llm/train_set.json") # Save train set (for debug)
 
     ################
     # Training
