@@ -57,7 +57,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import re
 import os
-import math
+import numpy as np
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 import random
@@ -95,7 +95,7 @@ bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/
 
 def get_cyclic_bitwidth(step, period=CYCLIC_PERIOD, min_bit=min(BIT_CHOICES), max_bit=max(BIT_CHOICES)):
     """
-    Compute cyclic bit-width based on current training step.
+    Compute cyclic bit-width based on current training step using cosine function.
     
     Args:
         step: Current training step
@@ -110,14 +110,10 @@ def get_cyclic_bitwidth(step, period=CYCLIC_PERIOD, min_bit=min(BIT_CHOICES), ma
     cycle_position = (step % period) / period
     
     # Use cosine function for smooth transition between min and max
-    # cos(0) = 1, cos(pi) = -1, so we map [0,1] to [min_bit, max_bit]
-    cosine_value = math.cos(2 * math.pi * cycle_position)
+    # Following the reference implementation pattern
+    current_bit = np.rint(min_bit + 0.5 * (max_bit - min_bit) * (1 + np.cos(np.pi * cycle_position + np.pi)))
     
-    # Map cosine value from [-1, 1] to [min_bit, max_bit]
-    current_bit = min_bit + (max_bit - min_bit) * (1 + cosine_value) / 2
-    
-    # Round to nearest integer
-    return int(round(current_bit))
+    return current_bit
 
 def quantize_tensor(tensor, num_bits=4) -> object:
     device = tensor.device # capture tensor device (gpu)
@@ -370,6 +366,12 @@ class BitwidthSchedulingCallback(TrainerCallback):
                 self.cyclic_min_bit, 
                 self.cyclic_max_bit
             )
+            
+            # # Clamp to valid bit choices to prevent KeyError
+            # if current_bit not in self.bit_choices:
+            #     # Find the closest valid bit choice
+            #     closest_bit = min(self.bit_choices, key=lambda x: abs(x - current_bit))
+            #     current_bit = closest_bit
             
             # Apply the same bit-width to all quantized layers
             bit_config = {}
