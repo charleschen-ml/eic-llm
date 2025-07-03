@@ -71,7 +71,7 @@ BIT_CHOICES = [8, 16] # bit choices for LoRA. Needs to match training/qat.py
 config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
 config2 = {f"transformer.h.{i}": 4 for i in range(12)}
 config3 = {f"transformer.h.{i}": 8 for i in range(12)}
-config4 = {f"transformer.h.10": 8}
+config4 = {f"transformer.h.6": 16}
 INF_BIT_CONFIG = config4
 
 # Load validation examples from JSON
