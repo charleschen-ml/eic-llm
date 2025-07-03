@@ -22,6 +22,7 @@ import shutil
 import evaluate
 import json
 import csv
+from math import ceil
 from tqdm import tqdm
 import torch
 from peft import get_peft_model, PeftModel
@@ -284,46 +285,89 @@ if __name__ == "__main__":
 
     print("\nAFTER TRAINING:\n")
 
-    for example in tqdm(dataset, desc="Evaluating", disable=True):
-        context = example["context"].strip()
-        question = example["question"].strip()
-        qid = example.get("id", f"id_{len(predictions)}")
+    # for example in tqdm(dataset, desc="Evaluating", disable=True):
+    #     context = example["context"].strip()
+    #     question = example["question"].strip()
+    #     qid = example.get("id", f"id_{len(predictions)}")
+    #     prompt = f"{example['context'].strip()}\n{example['question'].strip()}\n"
+    #     # print(f"prompt = \n{prompt}")
+
+    #     inputs = tokenizer(
+    #         prompt,
+    #         return_tensors="pt",
+    #         padding=True,
+    #         truncation=True,
+    #         max_length=512,
+    #     ).to(peft_sft.device)
+
+    #     # for name, module in peft_sft.named_modules(): 
+    #     #     if hasattr(module, "_lora_adapters"):
+    #     #         print(f"{name}: {list(module._lora_adapters.keys())}")
+
+    #     with torch.no_grad():
+    #         outputs = peft_sft.generate(
+    #             **inputs,
+    #             max_new_tokens=32,
+    #             do_sample=False,
+    #             eos_token_id=tokenizer.eos_token_id,
+    #             pad_token_id=tokenizer.eos_token_id
+    #         )
+
+    #     generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
+    #     generated_truncated = generated.split("\n")[0].strip()
+
+    #     predictions.append({
+    #         "id": qid,
+    #         "prediction_text": generated
+    #     })
+
+    #     references.append({
+    #         "id": qid,
+    #         "answers": example["answers"]
+    #     })
+
+    batch_size = 16
+    prompts = []
+    references = []
+    qids = []
+
+    for example in dataset:
         prompt = f"{example['context'].strip()}\n{example['question'].strip()}\n"
-        # print(f"prompt = \n{prompt}")
+        prompts.append(prompt)
+        references.append({
+            "id": example.get("id", f"id_{len(references)}"),
+            "answers": example["answers"]
+        })
+        qids.append(example.get("id", f"id_{len(qids)}"))
 
-        inputs = tokenizer(
-            prompt,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=512,
-        ).to(peft_sft.device)
+    predictions = []
 
-        # for name, module in peft_sft.named_modules(): 
-        #     if hasattr(module, "_lora_adapters"):
-        #         print(f"{name}: {list(module._lora_adapters.keys())}")
+    print("\n⚡ Running batched inference...")
+
+    for i in tqdm(range(0, len(prompts), batch_size), desc="Batches"):
+        batch_prompts = prompts[i:i+batch_size]
+        batch_qids = qids[i:i+batch_size]
+        batch_refs = references[i:i+batch_size]
+
+        inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True, truncation=True, max_length=512).to(peft_sft.device)
 
         with torch.no_grad():
             outputs = peft_sft.generate(
-                **inputs,
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
                 max_new_tokens=32,
                 do_sample=False,
                 eos_token_id=tokenizer.eos_token_id,
                 pad_token_id=tokenizer.eos_token_id
             )
 
-        generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
-        generated_truncated = generated.split("\n")[0].strip()
+        decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-        predictions.append({
-            "id": qid,
-            "prediction_text": generated
-        })
-
-        references.append({
-            "id": qid,
-            "answers": example["answers"]
-        })
+        for qid, text, ref in zip(batch_qids, decoded, batch_refs):
+            predictions.append({
+                "id": qid,
+                "prediction_text": text.strip()
+            })
 
     results = score_squad(predictions, references)
     save_predictions_to_csv(predictions, references)
