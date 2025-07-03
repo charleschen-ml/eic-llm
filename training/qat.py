@@ -124,15 +124,16 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOI
             module._active_bit = bit_widths[0]  # default
             module._bit_choices = bit_widths
 
-            def quantized_forward(self, input):
-                weight = self._quantized_weights[self._active_bit]
-                if weight.shape[1] != input.shape[-1]: 
-                    weight = weight.T # transpose if dim mismatch (for gpt2 internal layers e.g. c_attn)
-                # print(f"[Forward] {self} | Bit: {self._active_bit} | Weight shape: {weight.shape}")
-                return nn.functional.linear(input, weight, # put bias on the same device as the layer itself
-                                            self.bias.to(input.device) if self.bias is not None else None)
+            # To remove: now replaced with forward_with_quant_and_lora
+            # def quantized_forward(self, input):
+            #     weight = self._quantized_weights[self._active_bit]
+            #     if weight.shape[1] != input.shape[-1]: 
+            #         weight = weight.T # transpose if dim mismatch (for gpt2 internal layers e.g. c_attn)
+            #     # print(f"[Forward] {self} | Bit: {self._active_bit} | Weight shape: {weight.shape}")
+            #     return nn.functional.linear(input, weight, # put bias on the same device as the layer itself
+            #                                 self.bias.to(input.device) if self.bias is not None else None)
 
-            module.forward = quantized_forward.__get__(module, nn.Linear)
+            # module.forward = quantized_forward.__get__(module, nn.Linear)
 
 # def set_active_bitwidths(model, bit_config_dict): # To remove
 #     print(f"\n[set_active] start: {bit_config_dict}")  # debug
