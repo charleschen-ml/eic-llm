@@ -147,9 +147,17 @@ def set_active_bitwidths(model, bit_config_dict):
     print(f"\n[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
+            # Always skip deactivating c_attn layers
+            if "c_attn" in name:
+                continue  # ✅ always leave c_attn active
+
+            # Default all layers to inactive
+            module._active_bit = None
+
+            # Only activate layers that are explicitly configured
             for prefix, bit in bit_config_dict.items():
                 if name.startswith(prefix):
-                    module._active_bit = bit
+                    module._active_bit = bit  # ✅ only activate if explicitly configured
                     # print(f"[set_active] set {name} to {bit} bits")
 
 # def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
