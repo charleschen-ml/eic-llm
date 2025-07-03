@@ -363,16 +363,31 @@ def main(script_args, training_args, model_args):
         patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES)
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add switchable precision
-    if USE_BITWISE_LORA:
-        callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
-    else:
-        callbacks = []
+    
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True
     )
     eos = tokenizer.eos_token if tokenizer is not None else ""
+    
+    # Dummy forward to create LoRA modules
+    if USE_BITWISE_LORA:
+        # Use callback to randomize bitwidths before each train step
+        callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
+        
+        # Dummy pass to create lora
+        model.eval()
+        with torch.no_grad():
+            dummy_input = tokenizer("hello world", return_tensors="pt")["input_ids"].to(model.device)
+            model(dummy_input)
+        
+        # Verify lora created
+        for name, module in model.named_modules(): 
+            if hasattr(module, "_lora_adapters"):
+                print(f"{name}: {list(module._lora_adapters.keys())}")
+    else:
+        callbacks = []        
 
     ################
     # Dataset
@@ -411,14 +426,14 @@ def main(script_args, training_args, model_args):
         callbacks = callbacks
     )
 
-    # Set bit-widths per layer dynamically (you can randomize or group as needed)
-    config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
-    config2 = {f"transformer.h.{i}": 4 for i in range(12)}
-    config3 = {f"transformer.h.{i}": 8 for i in range(12)}
-    config4 = {f"transformer.h.11": 8}
-    if USE_QUANTIZATION and not USE_BITWISE_LORA:
-        set_active_bitwidths(model, config4) # static training
-        # set_random_bitwidths(model) # dynamic training (deprecated)
+    # # Set bit-widths per layer dynamically (you can randomize or group as needed)
+    # config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
+    # config2 = {f"transformer.h.{i}": 4 for i in range(12)}
+    # config3 = {f"transformer.h.{i}": 8 for i in range(12)}
+    # config4 = {f"transformer.h.11": 8}
+    # if USE_QUANTIZATION and not USE_BITWISE_LORA:
+    #     set_active_bitwidths(model, config4) # static training
+    #     # set_random_bitwidths(model) # dynamic training (deprecated)
 
     trainer.train()
 
