@@ -83,7 +83,7 @@ MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 USE_BITWISE_LORA = True
-QUANT_LAYERS = [0, 6, 11] # h.* layers to quantize
+QUANT_LAYERS = [6, 11] # h.* layers to quantize
 BIT_CHOICES = [4, 8] # bit choices for LoRA
 
 # Paths
