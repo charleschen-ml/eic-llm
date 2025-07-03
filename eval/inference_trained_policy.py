@@ -67,6 +67,7 @@ bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/ful
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
 BIT_CHOICES = [8, 16] # bit choices for LoRA. Needs to match training/qat.py
+MAX_INF_SIZE = 10 # max number of examples to infer
 
 # Inference bit config
 config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
@@ -77,7 +78,7 @@ INF_BIT_CONFIG = config4
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
-    dataset = [json.loads(line) for line in f][:100]
+    dataset = [json.loads(line) for line in f][:MAX_INF_SIZE]
 print(f"Examples used for inference: {len(dataset)}")
 
 # Load SQuAD metric
@@ -163,6 +164,7 @@ if __name__ == "__main__":
         model_args.model_name_or_path, padding_side="left", trust_remote_code=model_args.trust_remote_code
     )
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+    tokenizer.pad_token = tokenizer.eos_token  # GPT2 requires this for padding
     if tokenizer.chat_template is None:
         tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
 
@@ -350,6 +352,9 @@ if __name__ == "__main__":
         batch_refs = references[i:i+batch_size]
 
         inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True, truncation=True, max_length=512).to(peft_sft.device)
+
+        print(inputs["input_ids"].shape)
+        print(inputs["attention_mask"])
 
         with torch.no_grad():
             outputs = peft_sft.generate(
