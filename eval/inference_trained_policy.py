@@ -57,7 +57,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic e
 torch.use_deterministic_algorithms(True)
 
 # Paths
-eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json" #  eval_set.json (regular) or train_set.json (overfit)
+eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json" #  eval_set.json (regular) or train_set.json (overfit)
 adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or gpt2-sft
 OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
