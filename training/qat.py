@@ -79,7 +79,7 @@ from trl import (
 )
 
 # Settings
-MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
+MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 USE_BITWISE_LORA = True
@@ -289,7 +289,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
                     try:
                         lora_out = self._lora_adapters[bit_key](input)
                         output += lora_out
-                        # print(f"[Forward] Computed {self._layer_name} | Bit: {bit_key}")
+                        print(f"[Forward] Computed {self._layer_name} | Bit: {bit_key}")
                     except RuntimeError as e:
                         # print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
                         pass
