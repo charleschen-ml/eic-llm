@@ -164,7 +164,6 @@ if __name__ == "__main__":
         model_args.model_name_or_path, padding_side="left", trust_remote_code=model_args.trust_remote_code
     )
     tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-    tokenizer.pad_token = tokenizer.eos_token  # GPT2 requires this for padding
     if tokenizer.chat_template is None:
         tokenizer.chat_template = SIMPLE_CHAT_TEMPLATE
 
@@ -287,92 +286,46 @@ if __name__ == "__main__":
 
     print("\nAFTER TRAINING:\n")
 
-    # for example in tqdm(dataset, desc="Evaluating", disable=True):
-    #     context = example["context"].strip()
-    #     question = example["question"].strip()
-    #     qid = example.get("id", f"id_{len(predictions)}")
-    #     prompt = f"{example['context'].strip()}\n{example['question'].strip()}\n"
-    #     # print(f"prompt = \n{prompt}")
-
-    #     inputs = tokenizer(
-    #         prompt,
-    #         return_tensors="pt",
-    #         padding=True,
-    #         truncation=True,
-    #         max_length=512,
-    #     ).to(peft_sft.device)
-
-    #     # for name, module in peft_sft.named_modules(): 
-    #     #     if hasattr(module, "_lora_adapters"):
-    #     #         print(f"{name}: {list(module._lora_adapters.keys())}")
-
-    #     with torch.no_grad():
-    #         outputs = peft_sft.generate(
-    #             **inputs,
-    #             max_new_tokens=32,
-    #             do_sample=False,
-    #             eos_token_id=tokenizer.eos_token_id,
-    #             pad_token_id=tokenizer.eos_token_id
-    #         )
-
-    #     generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
-    #     generated_truncated = generated.split("\n")[0].strip()
-
-    #     predictions.append({
-    #         "id": qid,
-    #         "prediction_text": generated
-    #     })
-
-    #     references.append({
-    #         "id": qid,
-    #         "answers": example["answers"]
-    #     })
-
-    batch_size = 16
-    prompts = []
-    references = []
-    qids = []
-
-    for example in dataset:
+    for example in tqdm(dataset, desc="Evaluating", disable=True):
+        context = example["context"].strip()
+        question = example["question"].strip()
+        qid = example.get("id", f"id_{len(predictions)}")
         prompt = f"{example['context'].strip()}\n{example['question'].strip()}\n"
-        prompts.append(prompt)
-        references.append({
-            "id": example.get("id", f"id_{len(references)}"),
-            "answers": example["answers"]
-        })
-        qids.append(example.get("id", f"id_{len(qids)}"))
+        # print(f"prompt = \n{prompt}")
 
-    predictions = []
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512,
+        ).to(peft_sft.device)
 
-    print("\n⚡ Running batched inference...")
-
-    for i in tqdm(range(0, len(prompts), batch_size), desc="Batches"):
-        batch_prompts = prompts[i:i+batch_size]
-        batch_qids = qids[i:i+batch_size]
-        batch_refs = references[i:i+batch_size]
-
-        inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True, truncation=True, max_length=512).to(peft_sft.device)
-
-        print(inputs["input_ids"].shape)
-        print(inputs["attention_mask"])
+        # for name, module in peft_sft.named_modules(): 
+        #     if hasattr(module, "_lora_adapters"):
+        #         print(f"{name}: {list(module._lora_adapters.keys())}")
 
         with torch.no_grad():
             outputs = peft_sft.generate(
-                input_ids=inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
+                **inputs,
                 max_new_tokens=32,
                 do_sample=False,
                 eos_token_id=tokenizer.eos_token_id,
                 pad_token_id=tokenizer.eos_token_id
             )
 
-        decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
+        generated_truncated = generated.split("\n")[0].strip()
 
-        for qid, text, ref in zip(batch_qids, decoded, batch_refs):
-            predictions.append({
-                "id": qid,
-                "prediction_text": text.strip()
-            })
+        predictions.append({
+            "id": qid,
+            "prediction_text": generated
+        })
+
+        references.append({
+            "id": qid,
+            "answers": example["answers"]
+        })
 
     results = score_squad(predictions, references)
     save_predictions_to_csv(predictions, references)
