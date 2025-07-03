@@ -308,7 +308,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
 
 # Custom callback to randomize bitwidths before each train step
 class BitwidthRandomizationCallback(TrainerCallback):
-    def __init__(self, model, bit_choices=(4, 8)):
+    def __init__(self, model, bit_choices=BIT_CHOICES):
         self.model = model
         self.bit_choices = bit_choices
 
@@ -354,7 +354,7 @@ def main(script_args, training_args, model_args):
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add switchable precision
     if USE_BITWISE_LORA:
-        callbacks = [BitwidthRandomizationCallback(model)]
+        callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
     else:
         callbacks = []
 
