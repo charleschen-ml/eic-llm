@@ -57,6 +57,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import re
 import os
+import math
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 import random
@@ -85,8 +86,38 @@ USE_BITWISE_LORA = True
 QUANT_LAYERS = [6, 8, 10, 11] # h.* layers to quantize
 BIT_CHOICES = [8, 16] # bit choices for LoRA
 
+# Cyclic bit-width scheduling settings
+USE_CYCLIC_BITWIDTH = False  # Enable/disable cyclic bit-width scheduling
+CYCLIC_PERIOD = 100  # Number of steps for one complete cycle
+
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
+
+def get_cyclic_bitwidth(step, period=CYCLIC_PERIOD, min_bit=min(BIT_CHOICES), max_bit=max(BIT_CHOICES)):
+    """
+    Compute cyclic bit-width based on current training step.
+    
+    Args:
+        step: Current training step
+        period: Number of steps for one complete cycle
+        min_bit: Minimum bit-width in the cycle
+        max_bit: Maximum bit-width in the cycle
+    
+    Returns:
+        Current bit-width for the cycle (integer)
+    """
+    # Calculate position in the cycle (0 to 1)
+    cycle_position = (step % period) / period
+    
+    # Use cosine function for smooth transition between min and max
+    # cos(0) = 1, cos(pi) = -1, so we map [0,1] to [min_bit, max_bit]
+    cosine_value = math.cos(2 * math.pi * cycle_position)
+    
+    # Map cosine value from [-1, 1] to [min_bit, max_bit]
+    current_bit = min_bit + (max_bit - min_bit) * (1 + cosine_value) / 2
+    
+    # Round to nearest integer
+    return int(round(current_bit))
 
 def quantize_tensor(tensor, num_bits=4) -> object:
     device = tensor.device # capture tensor device (gpu)
@@ -311,26 +342,69 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
 
             module.forward = forward_with_quant_and_lora.__get__(module, type(module))
 
-# def set_random_bitwidths(model, bit_choices=[4, 8]): # To remove
-#     for name, module in model.named_modules():
-#         if name.startswith("transformer.h.0") and hasattr(module, "_quantized_weights"):
-#             module._active_bit = random.choice(bit_choices)
-
-# Custom callback to randomize bitwidths before each train step
-class BitwidthRandomizationCallback(TrainerCallback):
-    def __init__(self, model, bit_choices=BIT_CHOICES):
+# Custom callback to handle bit-width scheduling during training
+class BitwidthSchedulingCallback(TrainerCallback):
+    def __init__(self, model, bit_choices=BIT_CHOICES, use_cyclic=USE_CYCLIC_BITWIDTH, 
+                 cyclic_period=None):
         self.model = model
         self.bit_choices = bit_choices
+        self.use_cyclic = use_cyclic
+        self.step_count = 0
+        
+        # Only set cyclic parameters if using cyclic scheduling
+        if self.use_cyclic:
+            if cyclic_period is None:
+                cyclic_period = CYCLIC_PERIOD
+            self.cyclic_period = cyclic_period
+            self.cyclic_min_bit = min(BIT_CHOICES)
+            self.cyclic_max_bit = max(BIT_CHOICES)
 
     def on_step_begin(self, args, state, control, **kwargs):
-        # Randomly assign a bitwidth to each supported layer
-        bit_config = {}
-        for name, module in self.model.named_modules():
-            if hasattr(module, "_quantized_weights") and "lm_head" not in name:
-                chosen_bit = random.choice(self.bit_choices)
-                # print(f"[BitwidthRandomization] Prepare {name} <- {chosen_bit} bit")
-                bit_config[name] = chosen_bit
-        set_active_bitwidths(self.model, bit_config)
+        self.step_count += 1
+        
+        if self.use_cyclic:
+            # Use cyclic scheduling
+            current_bit = get_cyclic_bitwidth(
+                self.step_count, 
+                self.cyclic_period, 
+                self.cyclic_min_bit, 
+                self.cyclic_max_bit
+            )
+            
+            # Apply the same bit-width to all quantized layers
+            bit_config = {}
+            for name, module in self.model.named_modules():
+                if hasattr(module, "_quantized_weights") and "lm_head" not in name:
+                    bit_config[name] = current_bit
+            
+            if self.step_count % 10 == 0:  # Log every 10 steps to avoid spam
+                print(f"[CyclicBitwidth] Step {self.step_count}: Using {current_bit}-bit quantization")
+            
+            set_active_bitwidths(self.model, bit_config)
+        else:
+            # Use random bit-width assignment (original behavior)
+            bit_config = {}
+            for name, module in self.model.named_modules():
+                if hasattr(module, "_quantized_weights") and "lm_head" not in name:
+                    chosen_bit = random.choice(self.bit_choices)
+                    bit_config[name] = chosen_bit
+            set_active_bitwidths(self.model, bit_config)
+
+# # Custom callback to randomize bitwidths before each train step (original random implementation)
+# class BitwidthRandomizationCallback(TrainerCallback):
+#     def __init__(self, model, bit_choices=BIT_CHOICES):
+#         self.model = model
+#         self.bit_choices = bit_choices
+
+#     def on_step_begin(self, args, state, control, **kwargs):
+#         # Randomly assign a bitwidth to each supported layer
+#         bit_config = {}
+#         for name, module in self.model.named_modules():
+#             if hasattr(module, "_quantized_weights") and "lm_head" not in name:
+#                 chosen_bit = random.choice(self.bit_choices)
+#                 # print(f"[BitwidthRandomization] Prepare {name} <- {chosen_bit} bit")
+#                 bit_config[name] = chosen_bit
+#         set_active_bitwidths(self.model, bit_config)
 
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
@@ -373,8 +447,17 @@ def main(script_args, training_args, model_args):
     
     # Dummy forward to create LoRA modules
     if USE_BITWISE_LORA:
-        # Use callback to randomize bitwidths before each train step
-        callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
+        # Choose between cyclic scheduling and random assignment
+        callbacks = [BitwidthSchedulingCallback(
+            model, 
+            bit_choices=BIT_CHOICES,
+            use_cyclic=USE_CYCLIC_BITWIDTH
+        )]
+        
+        if USE_CYCLIC_BITWIDTH:
+            print(f"[Config] Using cyclic bit-width scheduling: {min(BIT_CHOICES)}-{max(BIT_CHOICES)} bits, period={CYCLIC_PERIOD}")
+        else:
+            print(f"[Config] Using random bit-width assignment from: {BIT_CHOICES}")
         
         # Dummy pass to create lora
         model.eval()
