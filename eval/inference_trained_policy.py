@@ -73,7 +73,7 @@ config2 = {f"transformer.h.{i}": 4 for i in range(12)}
 config3 = {f"transformer.h.{i}": 8 for i in range(12)}
 config4 = {f"transformer.h.11": 8}
 config5 = {f"transformer.h.11": 4}
-config6 = {f"transformer.h.8": 16}
+config6 = {f"transformer.h.10": 16}
 config7 = {f"transformer.h.6": 4}
 INF_BIT_CONFIG = config6
 
