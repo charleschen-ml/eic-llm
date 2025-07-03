@@ -287,6 +287,10 @@ if __name__ == "__main__":
             max_length=512,
         ).to(peft_sft.device)
 
+        for name, module in peft_sft.named_modules(): 
+            if hasattr(module, "_lora_adapters"):
+                print(f"{name}: {list(module._lora_adapters.keys())}")
+
         with torch.no_grad():
             outputs = peft_sft.generate(
                 **inputs,
