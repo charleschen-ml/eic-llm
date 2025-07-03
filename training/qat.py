@@ -83,6 +83,7 @@ MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 QUANT_BITS = 8
 USE_BITWISE_LORA = True
+QUANT_LAYERS = [0, 6, 11] # h.* layers to quantize
 
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
@@ -103,7 +104,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 1
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
             continue
         if any(skip in name for skip in ["lm_head", "wte"]):
             continue  # ✅ skip output and embedding layers
@@ -235,7 +236,7 @@ def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
     """
     for name, module in model.named_modules():
         # Only apply each linear layer in this module
-        if not any(name.startswith(f"transformer.h.{i}.") for i in [0, 6, 11]):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
             continue
 
         # Apply only to Linear layers that were quantized
