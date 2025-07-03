@@ -82,7 +82,7 @@ from trl import (
 MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
-QUANT_LAYERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] # h.* layers to quantize
+QUANT_LAYERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] # h.* layers to quantize
 BIT_CHOICES = [8, 16] # bit choices for LoRA
 
 # Paths
