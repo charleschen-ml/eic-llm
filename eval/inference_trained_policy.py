@@ -267,12 +267,20 @@ if __name__ == "__main__":
         peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
         peft_sft.eval()
 
+    # Print created lora
+    print("\n🔍 Created LoRA Adapters:")
     for name, module in peft_sft.named_modules():
         if hasattr(module, "_lora_adapters"):
             for bw, lora in module._lora_adapters.items():
                 weights = list(lora.parameters())
                 norm = sum(p.norm().item() for p in weights)
                 print(f"{name} | {bw}-bit LoRA norm: {norm:.4f}")
+
+    # Print active lora
+    print("\n🔍 Active LoRA Adapters:")
+    for name, module in peft_sft.named_modules():
+        if hasattr(module, "_lora_adapters") and hasattr(module, "_active_bitwidth"):
+            print(f"{name} | Active bitwidth: {module._active_bitwidth} | Available: {list(module._lora_adapters.keys())}")
 
     # Inference loop
     predictions, references = [], []
