@@ -57,7 +57,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import re
 import os
-import math
+import numpy as np
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 import random
@@ -79,45 +79,59 @@ from trl import (
     get_quantization_config,
 )
 
-# Settings
-MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
-USE_QUANTIZATION = True
-USE_BITWISE_LORA = True
-QUANT_LAYERS = [6, 8, 10, 11] # h.* layers to quantize
-BIT_CHOICES = [8, 16] # bit choices for LoRA
-
-# Cyclic bit-width scheduling settings
-USE_CYCLIC_BITWIDTH = True  # Enable/disable cyclic bit-width scheduling
-CYCLIC_PERIOD = 5  # Number of steps for one complete cycle
-
+# Custom arguments for QAT-specific parameters
+class QATArguments:
+    def __init__(self, 
+                 max_dataset_size=2,
+                 use_quantization=True,
+                 use_bitwise_lora=True,
+                 quant_layers=None,
+                 bit_choices=None,
+                 use_cyclic_bitwidth=True,
+                 cyclic_repeat_per_bit=1,
+                 adapter_path=None):
+        self.max_dataset_size = max_dataset_size
+        self.use_quantization = use_quantization
+        self.use_bitwise_lora = use_bitwise_lora
+        self.quant_layers = quant_layers or [6, 8, 10, 11]
+        self.bit_choices = bit_choices or [8, 16]
+        self.use_cyclic_bitwidth = use_cyclic_bitwidth
+        self.cyclic_repeat_per_bit = cyclic_repeat_per_bit
+        self.adapter_path = adapter_path or "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
+    
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
 
-def get_cyclic_bitwidth(step, period=CYCLIC_PERIOD, min_bit=min(BIT_CHOICES), max_bit=max(BIT_CHOICES)):
+def get_cyclic_bitwidth(step, bit_choices=BIT_CHOICES, repeat_per_bit=1):
     """
     Compute cyclic bit-width based on current training step.
+    Loops through bit choices from min to max and back, with configurable repeats per bit.
     
     Args:
         step: Current training step
-        period: Number of steps for one complete cycle
-        min_bit: Minimum bit-width in the cycle
-        max_bit: Maximum bit-width in the cycle
+        bit_choices: List of valid bit-width choices
+        repeat_per_bit: Number of times to repeat each bit-width before moving to next
     
     Returns:
-        Current bit-width for the cycle (integer)
+        Current bit-width for the cycle (integer from bit_choices)
     """
-    # Calculate position in the cycle (0 to 1)
-    cycle_position = (step % period) / period
+    # Calculate total steps for one complete cycle
+
+    total_cycle_steps = (2 * len(bit_choices) - 2) * repeat_per_bit
+    forward_steps = len(bit_choices) * repeat_per_bit
     
-    # Use cosine function for smooth transition between min and max
-    # cos(0) = 1, cos(pi) = -1, so we map [0,1] to [min_bit, max_bit]
-    cosine_value = math.cos(2 * math.pi * cycle_position)
+    # Calculate position within the cycle
+    cycle_step = step % total_cycle_steps
     
-    # Map cosine value from [-1, 1] to [min_bit, max_bit]
-    current_bit = min_bit + (max_bit - min_bit) * (1 + cosine_value) / 2
+    if cycle_step < forward_steps:
+        # Forward phase: min to max
+        bit_index = cycle_step // repeat_per_bit
+    else:
+        # Backward phase: max to min
+        backward_step = cycle_step - forward_steps
+        bit_index = len(bit_choices) - 2 - backward_step // repeat_per_bit
     
-    # Round to nearest integer
-    return int(round(current_bit))
+    return bit_choices[bit_index]
 
 def quantize_tensor(tensor, num_bits=4) -> object:
     device = tensor.device # capture tensor device (gpu)
@@ -142,7 +156,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOI
         if isinstance(module, (nn.Linear, Conv1D)):
             module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
 
-            # Precompute quantized weights
+            # Precompute quantized weights for bit choices
             for b in bit_widths:
                 w = module.weight.detach().clone().to(module.weight.device)
                 q_w = quantize_tensor(w, num_bits=b)
@@ -344,31 +358,21 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
 
 # Custom callback to handle bit-width scheduling during training
 class BitwidthSchedulingCallback(TrainerCallback):
-    def __init__(self, model, bit_choices=BIT_CHOICES, use_cyclic=USE_CYCLIC_BITWIDTH, 
-                 cyclic_period=None):
+    def __init__(self, model, bit_choices=BIT_CHOICES, use_cyclic=USE_CYCLIC_BITWIDTH):
         self.model = model
         self.bit_choices = bit_choices
         self.use_cyclic = use_cyclic
         self.step_count = 0
-        
-        # Only set cyclic parameters if using cyclic scheduling
-        if self.use_cyclic:
-            if cyclic_period is None:
-                cyclic_period = CYCLIC_PERIOD
-            self.cyclic_period = cyclic_period
-            self.cyclic_min_bit = min(BIT_CHOICES)
-            self.cyclic_max_bit = max(BIT_CHOICES)
 
     def on_step_begin(self, args, state, control, **kwargs):
         self.step_count += 1
         
         if self.use_cyclic:
-            # Use cyclic scheduling
+            # Use cyclic scheduling with automatic period based on bit choices
             current_bit = get_cyclic_bitwidth(
                 self.step_count, 
-                self.cyclic_period, 
-                self.cyclic_min_bit, 
-                self.cyclic_max_bit
+                self.bit_choices,
+                CYCLIC_REPEAT_PER_BIT
             )
             
             # Apply the same bit-width to all quantized layers
@@ -412,7 +416,31 @@ def sft_preprocess(example, tokenizer):
         "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
 
-def main(script_args, training_args, model_args):
+def main(script_args, training_args, model_args, qat_args=None):
+    """
+    Main training function with configurable parameters.
+    
+    Args:
+        script_args, training_args, model_args: Standard TRL arguments
+        qat_args: QATArguments object containing QAT-specific parameters
+    """
+    # Use default QAT arguments if none provided
+    if qat_args is None:
+        qat_args = QATArguments()
+    
+    # Update global constants for this run
+    global MAX_DATASET_SIZE, USE_QUANTIZATION, USE_BITWISE_LORA, QUANT_LAYERS, BIT_CHOICES
+    global USE_CYCLIC_BITWIDTH, CYCLIC_REPEAT_PER_BIT, bitwise_lora_adapter_path
+    
+    MAX_DATASET_SIZE = qat_args.max_dataset_size
+    USE_QUANTIZATION = qat_args.use_quantization
+    USE_BITWISE_LORA = qat_args.use_bitwise_lora
+    QUANT_LAYERS = qat_args.quant_layers
+    BIT_CHOICES = qat_args.bit_choices
+    USE_CYCLIC_BITWIDTH = qat_args.use_cyclic_bitwidth
+    CYCLIC_REPEAT_PER_BIT = qat_args.cyclic_repeat_per_bit
+    bitwise_lora_adapter_path = qat_args.adapter_path
+
     ################
     # Model init kwargs & Tokenizer
     ################
@@ -537,10 +565,56 @@ def make_parser(subparsers: argparse._SubParsersAction = None):
         parser = subparsers.add_parser("sft", help="Run the SFT training script", dataclass_types=dataclass_types)
     else:
         parser = TrlParser(dataclass_types)
+    
+    # Add QAT-specific arguments
+    parser.add_argument("--max_dataset_size", type=int, default=2, 
+                       help="Total samples (train+validation). Set to >= 2.")
+    parser.add_argument("--use_quantization", action="store_true", default=True,
+                       help="Whether to apply quantization")
+    parser.add_argument("--no_quantization", dest="use_quantization", action="store_false",
+                       help="Disable quantization")
+    parser.add_argument("--use_bitwise_lora", action="store_true", default=True,
+                       help="Whether to use bitwise LoRA adapters")
+    parser.add_argument("--no_bitwise_lora", dest="use_bitwise_lora", action="store_false",
+                       help="Disable bitwise LoRA adapters")
+    parser.add_argument("--quant_layers", type=str, default="6,8,10,11",
+                       help="Comma-separated list of h.* layers to quantize")
+    parser.add_argument("--bit_choices", type=str, default="8,16",
+                       help="Comma-separated list of bit choices for LoRA")
+    parser.add_argument("--use_cyclic_bitwidth", action="store_true", default=True,
+                       help="Enable cyclic bit-width scheduling")
+    parser.add_argument("--no_cyclic_bitwidth", dest="use_cyclic_bitwidth", action="store_false",
+                       help="Disable cyclic bit-width scheduling")
+    parser.add_argument("--cyclic_repeat_per_bit", type=int, default=1,
+                       help="Number of times to repeat each bit-width")
+    parser.add_argument("--adapter_path", type=str, 
+                       default="/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt",
+                       help="Path to save the bitwise LoRA adapter")
+    
     return parser
 
 
 if __name__ == "__main__":
     parser = make_parser()
     script_args, training_args, model_args = parser.parse_args_and_config()
-    main(script_args, training_args, model_args)
+    
+    # Parse QAT-specific arguments
+    args = parser.parse_args()
+    
+    # Convert string arguments to lists
+    quant_layers = [int(x.strip()) for x in args.quant_layers.split(",")]
+    bit_choices = [int(x.strip()) for x in args.bit_choices.split(",")]
+    
+    # Create QAT arguments object
+    qat_args = QATArguments(
+        max_dataset_size=args.max_dataset_size,
+        use_quantization=args.use_quantization,
+        use_bitwise_lora=args.use_bitwise_lora,
+        quant_layers=quant_layers,
+        bit_choices=bit_choices,
+        use_cyclic_bitwidth=args.use_cyclic_bitwidth,
+        cyclic_repeat_per_bit=args.cyclic_repeat_per_bit,
+        adapter_path=args.adapter_path
+    )
+    
+    main(script_args, training_args, model_args, qat_args)
