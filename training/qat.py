@@ -84,6 +84,7 @@ USE_QUANTIZATION = True
 QUANT_BITS = 8
 USE_BITWISE_LORA = True
 QUANT_LAYERS = [0, 6, 11] # h.* layers to quantize
+BIT_CHOICES = [4, 8] # bit choices for LoRA
 
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
@@ -98,7 +99,7 @@ def quantize_tensor(tensor, num_bits=4) -> object:
     tensor_dequant = tensor_quant * scale
     return tensor_dequant.to(device) # move tensor to gpu
 
-def patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8, 16]):
+def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES):
     """
     For each nn.Linear layer, store quantized weights for multiple bit-widths
     and use a runtime flag to choose the active one.
@@ -229,7 +230,7 @@ def set_active_bitwidths(model, bit_config_dict):
 #             # Replace original forward function
 #             module.forward = forward_with_quant_and_lora.__get__(module, type(module)) # type(module) to include conv1D
 
-def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
+def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     """
     For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
     During forward pass, apply quantized weight and the matching LoRA adapter.
@@ -350,10 +351,10 @@ def main(script_args, training_args, model_args):
     if USE_QUANTIZATION:
         model.to("cuda")  # ✅ move to GPU before quantizing
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        patch_linear_forward_with_switchable_quantization(model, bit_widths=[4, 8])
+        patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES)
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
-        add_bitwise_lora_adapters(model, bit_widths=[4, 8]) # add switchable precision
+        add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add switchable precision
     if USE_BITWISE_LORA:
         callbacks = [BitwidthRandomizationCallback(model)]
     else:
