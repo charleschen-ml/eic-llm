@@ -81,7 +81,6 @@ from trl import (
 # Settings
 MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
-QUANT_BITS = 8
 USE_BITWISE_LORA = True
 QUANT_LAYERS = [6, 11] # h.* layers to quantize
 BIT_CHOICES = [4, 8] # bit choices for LoRA
@@ -353,7 +352,6 @@ def main(script_args, training_args, model_args):
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES)
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        print(f"⚡ Quantization enabled: using {QUANT_BITS}-bit weight quantization in linear layers.")
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add switchable precision
     if USE_BITWISE_LORA:
         callbacks = [BitwidthRandomizationCallback(model)]
