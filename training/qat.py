@@ -87,8 +87,8 @@ QUANT_LAYERS = [6, 8, 10, 11] # h.* layers to quantize
 BIT_CHOICES = [8, 16] # bit choices for LoRA
 
 # Cyclic bit-width scheduling settings
-USE_CYCLIC_BITWIDTH = False  # Enable/disable cyclic bit-width scheduling
-CYCLIC_PERIOD = 100  # Number of steps for one complete cycle
+USE_CYCLIC_BITWIDTH = True  # Enable/disable cyclic bit-width scheduling
+CYCLIC_PERIOD = 5  # Number of steps for one complete cycle
 
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
