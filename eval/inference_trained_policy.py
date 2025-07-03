@@ -75,7 +75,7 @@ config4 = {f"transformer.h.11": 8}
 config5 = {f"transformer.h.11": 4}
 config6 = {f"transformer.h.6": 8}
 config7 = {f"transformer.h.6": 4}
-INF_BIT_CONFIG = config4
+INF_BIT_CONFIG = config6
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
