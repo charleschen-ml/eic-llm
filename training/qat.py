@@ -82,8 +82,8 @@ from trl import (
 MAX_DATASET_SIZE = 10000  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
-QUANT_LAYERS = [6, 8, 10, 11] # h.* layers to quantize
-BIT_CHOICES = [8, 16] # bit choices for LoRA
+QUANT_LAYERS = [6, 11] # h.* layers to quantize
+BIT_CHOICES = [4, 8, 16] # bit choices for LoRA
 
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
