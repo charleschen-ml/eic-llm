@@ -83,7 +83,7 @@ MAX_DATASET_SIZE = 2  # Total samples (train+validation). Set to >= 2.
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
 QUANT_LAYERS = [6, 11] # h.* layers to quantize
-BIT_CHOICES = [8] # bit choices for LoRA
+BIT_CHOICES = [4, 8] # bit choices for LoRA
 
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
@@ -301,7 +301,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                         output += lora_out
                         print(f"[Forward] Computed {self._layer_name} | Bit: {bit_key}")
                     except RuntimeError as e:
-                        print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
+                        # print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
                         # pass
                 else:
                     # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")

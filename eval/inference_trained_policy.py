@@ -65,7 +65,7 @@ bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/ful
 # Settings
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
-BIT_CHOICES = [8] # bit choices for LoRA
+BIT_CHOICES = [4, 8] # bit choices for LoRA
 
 # Inference bit config
 config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
