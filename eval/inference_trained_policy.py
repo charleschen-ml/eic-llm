@@ -67,6 +67,16 @@ USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
 BIT_CHOICES = [4, 8] # bit choices for LoRA
 
+# Inference bit config
+config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
+config2 = {f"transformer.h.{i}": 4 for i in range(12)}
+config3 = {f"transformer.h.{i}": 8 for i in range(12)}
+config4 = {f"transformer.h.11": 8}
+config5 = {f"transformer.h.11": 4}
+config6 = {f"transformer.h.6": 8}
+config7 = {f"transformer.h.6": 4}
+INF_BIT_CONFIG = config7
+
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
     dataset = [json.loads(line) for line in f][:100]
@@ -165,13 +175,6 @@ if __name__ == "__main__":
     print(f"Loaded base model path: {model_args.model_name_or_path}")
 
     # Set quantization config to match training
-    config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
-    config2 = {f"transformer.h.{i}": 4 for i in range(12)}
-    config3 = {f"transformer.h.{i}": 8 for i in range(12)}
-    config4 = {f"transformer.h.11": 8}
-    config5 = {f"transformer.h.11": 4}
-    config6 = {f"transformer.h.6": 8}
-    config7 = {f"transformer.h.6": 4}
     if USE_QUANTIZATION:
         patch_linear_forward_with_switchable_quantization(base_model, bit_widths=BIT_CHOICES)
         add_bitwise_lora_adapters(base_model, bit_widths=BIT_CHOICES)
@@ -183,7 +186,7 @@ if __name__ == "__main__":
         state_dict = torch.load(bitwise_lora_adapter_path, map_location="cpu")
         base_model.load_state_dict(state_dict)
         base_model.to("cuda")
-        set_active_bitwidths(base_model, config7)
+        set_active_bitwidths(base_model, INF_BIT_CONFIG)
         base_model.eval()
 
     # load peft config
