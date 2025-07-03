@@ -247,6 +247,8 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
             module._layer_name = name  # temp debug
 
             def forward_with_quant_and_lora(self, input):
+                if getattr(self, "_active_bit", None) is None:
+                    return input
                 bit_key = str(self._active_bit)
                 # print(f"[Forward] {self._layer_name} | Bit: {bit_key}")
                 input = input[0] if isinstance(input, tuple) else input
