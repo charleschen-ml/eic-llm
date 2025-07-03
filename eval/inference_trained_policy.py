@@ -189,14 +189,14 @@ if __name__ == "__main__":
         set_active_bitwidths(base_model, INF_BIT_CONFIG)
         base_model.eval()
 
-    # load peft config
-    peft_config = get_peft_config(model_args)
-    if peft_config is None:
-        ref_policy = AutoModelForCausalLM.from_pretrained(
-            training_args.sft_model_path, trust_remote_code=model_args.trust_remote_code
-        )
-    else:
-        ref_policy = None
+    # # load peft config
+    # peft_config = get_peft_config(model_args)
+    # if peft_config is None:
+    #     ref_policy = AutoModelForCausalLM.from_pretrained(
+    #         training_args.sft_model_path, trust_remote_code=model_args.trust_remote_code
+    #     )
+    # else:
+    #     ref_policy = None
 
     # load squad dataset from hf
     df = load_dataset("rajpurkar/squad", split="train") # split="train" or "validation"
@@ -267,6 +267,13 @@ if __name__ == "__main__":
         peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
         peft_sft.eval()
 
+    for name, module in peft_sft.named_modules():
+        if hasattr(module, "_lora_adapters"):
+            for bw, lora in module._lora_adapters.items():
+                weights = list(lora.parameters())
+                norm = sum(p.norm().item() for p in weights)
+                print(f"{name} | {bw}-bit LoRA norm: {norm:.4f}")
+
     # Inference loop
     predictions, references = [], []
 
@@ -287,9 +294,9 @@ if __name__ == "__main__":
             max_length=512,
         ).to(peft_sft.device)
 
-        for name, module in peft_sft.named_modules(): 
-            if hasattr(module, "_lora_adapters"):
-                print(f"{name}: {list(module._lora_adapters.keys())}")
+        # for name, module in peft_sft.named_modules(): 
+        #     if hasattr(module, "_lora_adapters"):
+        #         print(f"{name}: {list(module._lora_adapters.keys())}")
 
         with torch.no_grad():
             outputs = peft_sft.generate(
