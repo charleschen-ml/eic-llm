@@ -140,13 +140,13 @@ def quantize_tensor(tensor, num_bits=4) -> object:
     tensor_dequant = tensor_quant * scale
     return tensor_dequant.to(device) # move tensor to gpu
 
-def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES):
+def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS):
     """
     For each nn.Linear layer, store quantized weights for multiple bit-widths
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in quant_layers):
             continue
         if any(skip in name for skip in ["lm_head", "wte"]):
             continue  # ✅ skip output and embedding layers
@@ -279,14 +279,14 @@ def set_active_bitwidths(model, bit_config_dict):
 #             # Replace original forward function
 #             module.forward = forward_with_quant_and_lora.__get__(module, type(module)) # type(module) to include conv1D
 
-def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
+def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS):
     """
     For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
     During forward pass, apply quantized weight and the matching LoRA adapter.
     """
     for name, module in model.named_modules():
         # Only apply each linear layer in this module
-        if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in quant_layers):
             continue
 
         # Apply only to Linear layers that were quantized
