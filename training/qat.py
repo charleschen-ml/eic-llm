@@ -145,7 +145,6 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_l
     For each nn.Linear layer, store quantized weights for multiple bit-widths
     and use a runtime flag to choose the active one.
     """
-    print(f"[Quantize] Patching linear forward with switchable quantization for layers: {quant_layers}")
     for name, module in model.named_modules():
         if not any(name.startswith(f"transformer.h.{i}.") for i in quant_layers):
             continue
@@ -415,7 +414,7 @@ def sft_preprocess(example, tokenizer):
         "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
 
-def main(script_args, training_args, model_args, qat_args=None):
+def main(script_args, training_args, model_args, qat_args):
     """
     Main training function with configurable parameters.
     
@@ -596,8 +595,8 @@ if __name__ == "__main__":
         max_dataset_size=args.max_dataset_size,
         use_quantization=args.use_quantization,
         use_bitwise_lora=args.use_bitwise_lora,
-        quant_layers=quant_layers,
-        bit_choices=bit_choices,
+        quant_layers=args.quant_layers,
+        bit_choices=args.bit_choices,
         use_cyclic_bitwidth=args.use_cyclic_bitwidth,
         cyclic_repeat_per_bit=args.cyclic_repeat_per_bit,
         adapter_path=args.adapter_path
