@@ -422,9 +422,9 @@ def main(script_args, training_args, model_args, qat_args):
         script_args, training_args, model_args: Standard TRL arguments
         qat_args: QATArguments object containing QAT-specific parameters
     """
-    # Use default QAT arguments if none provided
-    if qat_args is None:
-        qat_args = QATArguments()
+    # # Use default QAT arguments if none provided
+    # if qat_args is None:
+    #     qat_args = QATArguments()
 
     ################
     # Model init kwargs & Tokenizer
