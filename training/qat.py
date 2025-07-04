@@ -85,22 +85,22 @@ class QATArguments:
                  max_dataset_size=2,
                  use_quantization=True,
                  use_bitwise_lora=True,
-                 quant_layers=None,
-                 bit_choices=None,
+                 quant_layers=[6, 8, 10, 11],
+                 bit_choices=[8, 16],
                  use_cyclic_bitwidth=True,
                  cyclic_repeat_per_bit=1,
                  adapter_path=None):
         self.max_dataset_size = max_dataset_size
         self.use_quantization = use_quantization
         self.use_bitwise_lora = use_bitwise_lora
-        self.quant_layers = quant_layers or [6, 8, 10, 11]
-        self.bit_choices = bit_choices or [8, 16]
+        self.quant_layers = quant_layers
+        self.bit_choices = bit_choices
         self.use_cyclic_bitwidth = use_cyclic_bitwidth
         self.cyclic_repeat_per_bit = cyclic_repeat_per_bit
         self.adapter_path = adapter_path or "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
     
 
-def get_cyclic_bitwidth(step, bit_choices=BIT_CHOICES, repeat_per_bit=1):
+def get_cyclic_bitwidth(step, bit_choices, repeat_per_bit=1):
     """
     Compute cyclic bit-width based on current training step.
     Loops through bit choices from min to max and back, with configurable repeats per bit.
@@ -140,7 +140,7 @@ def quantize_tensor(tensor, num_bits=4) -> object:
     tensor_dequant = tensor_quant * scale
     return tensor_dequant.to(device) # move tensor to gpu
 
-def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS):
+def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_layers):
     """
     For each nn.Linear layer, store quantized weights for multiple bit-widths
     and use a runtime flag to choose the active one.
@@ -279,7 +279,7 @@ def set_active_bitwidths(model, bit_config_dict):
 #             # Replace original forward function
 #             module.forward = forward_with_quant_and_lora.__get__(module, type(module)) # type(module) to include conv1D
 
-def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS):
+def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
     """
     For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
     During forward pass, apply quantized weight and the matching LoRA adapter.
