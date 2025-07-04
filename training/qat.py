@@ -373,12 +373,6 @@ class BitwidthSchedulingCallback(TrainerCallback):
                 self.cyclic_repeat_per_bit
             )
             
-            # # Clamp to valid bit choices to prevent KeyError
-            # if current_bit not in self.bit_choices:
-            #     # Find the closest valid bit choice
-            #     closest_bit = min(self.bit_choices, key=lambda x: abs(x - current_bit))
-            #     current_bit = closest_bit
-            
             # Apply the same bit-width to all quantized layers
             bit_config = {}
             for name, module in self.model.named_modules():

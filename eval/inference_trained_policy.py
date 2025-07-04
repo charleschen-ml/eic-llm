@@ -66,6 +66,7 @@ bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/ful
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
 BIT_CHOICES = [8, 16] # bit choices for LoRA. Needs to match training/qat.py
+QUANT_LAYERS = [6, 8, 10, 11] # h.* layers to quantize. Needs to match training/qat.py
 
 # Inference bit config
 config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
@@ -176,8 +177,8 @@ if __name__ == "__main__":
 
     # Set quantization config to match training
     if USE_QUANTIZATION:
-        patch_linear_forward_with_switchable_quantization(base_model, bit_widths=BIT_CHOICES)
-        add_bitwise_lora_adapters(base_model, bit_widths=BIT_CHOICES)
+        patch_linear_forward_with_switchable_quantization(base_model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS)
+        add_bitwise_lora_adapters(base_model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS)
 
         # Dummy forward to create LoRA modules, which are created at run time to fix matrix dim mismatch error
         dummy_input = tokenizer("hello", return_tensors="pt").to(base_model.device)
