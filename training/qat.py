@@ -119,8 +119,7 @@ def get_cyclic_bitwidth(step, bit_choices=BIT_CHOICES, repeat_per_bit=1):
 
     total_cycle_steps = (2 * len(bit_choices) - 2) * repeat_per_bit
     forward_steps = len(bit_choices) * repeat_per_bit
-    
-    # Calculate position within the cycle
+        # Calculate position within the cycle
     cycle_step = step % total_cycle_steps
     
     if cycle_step < forward_steps:
@@ -374,6 +373,12 @@ class BitwidthSchedulingCallback(TrainerCallback):
                 self.bit_choices,
                 CYCLIC_REPEAT_PER_BIT
             )
+            
+            # # Clamp to valid bit choices to prevent KeyError
+            # if current_bit not in self.bit_choices:
+            #     # Find the closest valid bit choice
+            #     closest_bit = min(self.bit_choices, key=lambda x: abs(x - current_bit))
+            #     current_bit = closest_bit
             
             # Apply the same bit-width to all quantized layers
             bit_config = {}
