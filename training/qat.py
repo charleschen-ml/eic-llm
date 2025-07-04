@@ -431,19 +431,6 @@ def main(script_args, training_args, model_args, qat_args=None):
     # Use default QAT arguments if none provided
     if qat_args is None:
         qat_args = QATArguments()
-    
-    # Update global constants for this run
-    global MAX_DATASET_SIZE, USE_QUANTIZATION, USE_BITWISE_LORA, QUANT_LAYERS, BIT_CHOICES
-    global USE_CYCLIC_BITWIDTH, CYCLIC_REPEAT_PER_BIT, bitwise_lora_adapter_path
-    
-    MAX_DATASET_SIZE = qat_args.max_dataset_size
-    USE_QUANTIZATION = qat_args.use_quantization
-    USE_BITWISE_LORA = qat_args.use_bitwise_lora
-    QUANT_LAYERS = qat_args.quant_layers
-    BIT_CHOICES = qat_args.bit_choices
-    USE_CYCLIC_BITWIDTH = qat_args.use_cyclic_bitwidth
-    CYCLIC_REPEAT_PER_BIT = qat_args.cyclic_repeat_per_bit
-    bitwise_lora_adapter_path = qat_args.adapter_path
 
     ################
     # Model init kwargs & Tokenizer
@@ -463,12 +450,12 @@ def main(script_args, training_args, model_args, qat_args=None):
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, **model_kwargs)
 
     # Apply quantization
-    if USE_QUANTIZATION:
+    if qat_args.use_quantization:
         model.to("cuda")  # ✅ move to GPU before quantizing
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES)
+        patch_linear_forward_with_switchable_quantization(model, bit_widths=qat_args.bit_choices, quant_layers=qat_args.quant_layers)
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add switchable precision
+        add_bitwise_lora_adapters(model, bit_widths=qat_args.bit_choices, quant_layers=qat_args.quant_layers)
     
 
     # Create tokenizer
@@ -478,19 +465,19 @@ def main(script_args, training_args, model_args, qat_args=None):
     eos = tokenizer.eos_token if tokenizer is not None else ""
     
     # Dummy forward to create LoRA modules
-    if USE_BITWISE_LORA:
+    if qat_args.use_bitwise_lora:
         # Choose between cyclic scheduling and random assignment
         callbacks = [BitwidthSchedulingCallback(
             model, 
-            bit_choices=BIT_CHOICES,
-            use_cyclic=USE_CYCLIC_BITWIDTH,
-            cyclic_repeat_per_bit=CYCLIC_REPEAT_PER_BIT
+            bit_choices=qat_args.bit_choices,
+            use_cyclic=qat_args.use_cyclic_bitwidth,
+            cyclic_repeat_per_bit=qat_args.cyclic_repeat_per_bit
         )]
         
-        if USE_CYCLIC_BITWIDTH:
-            print(f"[Config] Using cyclic bit-width scheduling: {min(BIT_CHOICES)}-{max(BIT_CHOICES)} bits, period={CYCLIC_PERIOD}")
+        if qat_args.use_cyclic_bitwidth:
+            print(f"[Config] Using cyclic bit-width scheduling: {min(qat_args.bit_choices)}-{max(qat_args.bit_choices)} bits")
         else:
-            print(f"[Config] Using random bit-width assignment from: {BIT_CHOICES}")
+            print(f"[Config] Using random bit-width assignment from: {qat_args.bit_choices}")
         
         # Dummy pass to create lora
         model.eval()
@@ -510,8 +497,8 @@ def main(script_args, training_args, model_args, qat_args=None):
     ################
     raw_datasets = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
     # Shuffle and truncate the train split only
-    dataset = raw_datasets["train"].shuffle(seed=42).select(range(MAX_DATASET_SIZE))
-    if MAX_DATASET_SIZE > 1:
+    dataset = raw_datasets["train"].shuffle(seed=42).select(range(qat_args.max_dataset_size))
+    if qat_args.max_dataset_size > 1:
         # 80/20 split
         split = dataset.train_test_split(test_size=0.2, seed=42)
         train_dataset = split["train"].map(lambda x: sft_preprocess(x, tokenizer))
@@ -520,10 +507,10 @@ def main(script_args, training_args, model_args, qat_args=None):
         print(f"Validation size: {len(eval_dataset)}")
     else:
         # Don't split if dataset has only 1 example
-        train_dataset = split["train"].map(lambda x: sft_preprocess(x, tokenizer))
+        train_dataset = dataset.map(lambda x: sft_preprocess(x, tokenizer))
         eval_dataset = None
         print(f"Train size: {len(train_dataset)}")
-        print("Validation set not created (MAX_DATASET_SIZE <= 1)")
+        print(f"Validation set not created (max_dataset_size <= 1)")
     print("Example preprocessed train sample:")
     print(train_dataset[0]["text"])
     eval_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/nn/eic_llm/eval_set.json") # Save eval set for inference script
@@ -547,7 +534,7 @@ def main(script_args, training_args, model_args, qat_args=None):
     # config2 = {f"transformer.h.{i}": 4 for i in range(12)}
     # config3 = {f"transformer.h.{i}": 8 for i in range(12)}
     # config4 = {f"transformer.h.11": 8}
-    # if USE_QUANTIZATION and not USE_BITWISE_LORA:
+    # if qat_args.use_quantization and not qat_args.use_bitwise_lora:
     #     set_active_bitwidths(model, config4) # static training
     #     # set_random_bitwidths(model) # dynamic training (deprecated)
 
@@ -555,11 +542,11 @@ def main(script_args, training_args, model_args, qat_args=None):
 
     # Save and push to hub
     trainer.save_model(training_args.output_dir)
-    if USE_BITWISE_LORA:
+    if qat_args.use_bitwise_lora:
         print(type(model))                         # should show PeftModel
         print(type(model.base_model))             # should show PeftModelForCausalLM
         # print(type(model.base_model.model))       # should show GPT2LMHeadModel
-        torch.save(model.state_dict(), bitwise_lora_adapter_path)
+        torch.save(model.state_dict(), qat_args.adapter_path)
     if training_args.push_to_hub:
         trainer.push_to_hub(dataset_name=script_args.dataset_name)
 
