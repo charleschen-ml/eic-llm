@@ -176,15 +176,6 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_l
 
             module.forward = quantized_forward.__get__(module, nn.Linear)
 
-# def set_active_bitwidths(model, bit_config_dict): # To remove
-#     print(f"\n[set_active] start: {bit_config_dict}")  # debug
-#     for name, module in model.named_modules():
-#         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-#             # print(f"[set_active] {name} is linear and has q_weights")
-#             if name in bit_config_dict:
-#                 module._active_bit = bit_config_dict[name]
-#                 print(f"[set_active] successfully configured: {name} | Active bit: {bit_config_dict[name]}")
-
 def set_active_bitwidths(model, bit_config_dict):
     print(f"\n[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
@@ -201,83 +192,6 @@ def set_active_bitwidths(model, bit_config_dict):
                 if name.startswith(prefix):
                     module._active_bit = bit  # ✅ only activate if explicitly configured
                     # print(f"[set_active] set {name} to {bit} bits")
-
-# def add_bitwise_lora_adapters(model, bit_widths=[4, 8, 16]):
-#     """
-#     For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
-#     During forward pass, apply quantized weight and the matching LoRA adapter.
-#     """
-#     for name, module in model.named_modules():
-#         # Only apply each linear layer in this module
-#         if not any(name.startswith(f"transformer.h.{i}.") for i in [11]):
-#             continue
-
-#         # Apply only to Linear layers that were quantized
-#         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-#             module._lora_adapters = nn.ModuleDict()
-#             # Create one LoRA module per bit-width (e.g., 4-bit and 8-bit)
-#             for b in bit_widths:
-#                 print(f"[bitwise_lora] {name} | shape = {module.weight.shape}") # debug
-#                 r = 8  # LoRA rank; can tune this
-#                 if module.weight.shape[1] == module.weight.shape[0] * 3:
-#                     print(f"[LoRA WARNING] Skipping {name} due to shape mismatch risk.")
-#                     continue
-#                 in_features = module.weight.shape[1]
-#                 out_features = module.weight.shape[0]
-#                 lora_down = nn.Linear(in_features, r, bias=False)
-#                 lora_up = nn.Linear(r, out_features, bias=False)
-#                 print(f"[bitwise_lora] lora_down shape: {lora_down.weight.shape}") # debug
-#                 print(f"[bitwise_lora] lora_up shape: {lora_up.weight.shape}") # debug
-#                 module._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-#                 print(f"[bitwise_lora] Created lora for layer {name} | {b} bits")
-
-#             # Set default active bit-width
-#             module._active_bit = bit_widths[0]
-
-#             module._layer_name = name # temp debug
-
-#             def forward_with_quant_and_lora(module, input):
-#                 """
-#                 Custom forward function that applies quantized weights and the corresponding LoRA adapter.
-#                 Assumes input is a tuple, as passed into nn.Module.forward hooks.
-#                 """
-#                 bit_key = str(module._active_bit)
-#                 print(f"[Forward] {module._layer_name} | Bit: {bit_key}")
-#                 input = input[0] if isinstance(input, tuple) else input
-#                 print(f"[Forward] input shape: {input.shape}") # debug
-
-#                 weight = module._quantized_weights[module._active_bit]
-#                 print(f"[Forward] weight shape: {weight.shape}") # debug
-
-#                 # Transpose if needed for compatibility
-#                 if weight.shape[1] != input.shape[-1]:
-#                     weight = weight.T
-#                     print(f"[Forward] transposed weight shape: {weight.shape}") # debug
-#                 bias = module.bias
-
-#                 # Quantized output
-#                 output = F.linear(input, weight, bias)
-#                 print(f"[Forward] output shape: {output.shape}") # debug
-
-#                 # Apply LoRA if available and compatible
-#                 if hasattr(module, "_lora_adapters") and module._lora_adapters:
-
-#                     lora = module._lora_adapters[bit_key] if bit_key in module._lora_adapters else None
-#                     print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora attr exists")
-#                     if lora is not None:
-#                         print(f"[Forward] {module._layer_name} | Bit: {bit_key} | lora exists")
-#                         try:
-#                             lora_out = lora(input)
-#                             output += lora_out
-#                             print(f"[Forward] computed {module._layer_name} | Bit: {bit_key}")
-#                         except RuntimeError as e:
-#                             print(f"[Forward] skipped {module._layer_name} | Bit: {bit_key} | {e}")
-#                     else:
-#                         print(f"[LoRA] No LoRA adapter for bit {module._active_bit} in {module}")
-#                 return output
-
-#             # Replace original forward function
-#             module.forward = forward_with_quant_and_lora.__get__(module, type(module)) # type(module) to include conv1D
 
 def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
     """
