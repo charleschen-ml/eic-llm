@@ -118,8 +118,8 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOI
                 w_mean = w.mean().item()
                 q_w_mean = q_w.mean().item()
                 mean_diff = (w - q_w).abs().mean().item()
-                max_val = w.abs().max().item()
-                min_val = w.abs().min().item()
+                max_val = w.max().item()
+                min_val = w.min().item()
                 print(
                     f"[Quantize] Precomputed {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_val:.4f} | Min abs weight before: {min_val:.4f} | Mean weight before: {w_mean:.4f} | Mean quantized weight: {q_w_mean:.4f}")
                 module._quantized_weights[b] = q_w
