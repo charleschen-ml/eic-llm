@@ -466,7 +466,6 @@ def main(script_args, training_args, model_args, qat_args=None):
     
     # Dummy forward to create LoRA modules
     if qat_args.use_bitwise_lora:
-        # Choose between cyclic scheduling and random assignment
         callbacks = [BitwidthSchedulingCallback(
             model, 
             bit_choices=qat_args.bit_choices,
