@@ -99,8 +99,6 @@ class QATArguments:
         self.cyclic_repeat_per_bit = cyclic_repeat_per_bit
         self.adapter_path = adapter_path or "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
     
-# Paths
-bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
 
 def get_cyclic_bitwidth(step, bit_choices=BIT_CHOICES, repeat_per_bit=1):
     """
