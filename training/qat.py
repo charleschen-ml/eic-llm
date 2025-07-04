@@ -145,6 +145,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_l
     For each nn.Linear layer, store quantized weights for multiple bit-widths
     and use a runtime flag to choose the active one.
     """
+    print(f"[Quantize] Patching linear forward with switchable quantization for layers: {quant_layers}")
     for name, module in model.named_modules():
         if not any(name.startswith(f"transformer.h.{i}.") for i in quant_layers):
             continue
