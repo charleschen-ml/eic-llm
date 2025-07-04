@@ -355,10 +355,11 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
 
 # Custom callback to handle bit-width scheduling during training
 class BitwidthSchedulingCallback(TrainerCallback):
-    def __init__(self, model, bit_choices=BIT_CHOICES, use_cyclic=USE_CYCLIC_BITWIDTH):
+    def __init__(self, model, bit_choices, use_cyclic, cyclic_repeat_per_bit):
         self.model = model
         self.bit_choices = bit_choices
-        self.use_cyclic = use_cyclic
+        self.use_cyclic = use_cyclic 
+        self.cyclic_repeat_per_bit = cyclic_repeat_per_bit
         self.step_count = 0
 
     def on_step_begin(self, args, state, control, **kwargs):
@@ -369,7 +370,7 @@ class BitwidthSchedulingCallback(TrainerCallback):
             current_bit = get_cyclic_bitwidth(
                 self.step_count, 
                 self.bit_choices,
-                CYCLIC_REPEAT_PER_BIT
+                self.cyclic_repeat_per_bit
             )
             
             # # Clamp to valid bit choices to prevent KeyError
@@ -482,7 +483,8 @@ def main(script_args, training_args, model_args, qat_args=None):
         callbacks = [BitwidthSchedulingCallback(
             model, 
             bit_choices=BIT_CHOICES,
-            use_cyclic=USE_CYCLIC_BITWIDTH
+            use_cyclic=USE_CYCLIC_BITWIDTH,
+            cyclic_repeat_per_bit=CYCLIC_REPEAT_PER_BIT
         )]
         
         if USE_CYCLIC_BITWIDTH:
