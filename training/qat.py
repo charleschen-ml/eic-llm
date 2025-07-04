@@ -453,9 +453,9 @@ def main(script_args, training_args, model_args, qat_args=None):
     if qat_args.use_quantization:
         model.to("cuda")  # ✅ move to GPU before quantizing
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        patch_linear_forward_with_switchable_quantization(model, bit_widths=qat_args.bit_choices, quant_layers=qat_args.quant_layers)
+        patch_linear_forward_with_switchable_quantization(model, qat_args.bit_choices, qat_args.quant_layers)
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        add_bitwise_lora_adapters(model, bit_widths=qat_args.bit_choices, quant_layers=qat_args.quant_layers)
+        add_bitwise_lora_adapters(model, qat_args.bit_choices, qat_args.quant_layers)
     
 
     # Create tokenizer
