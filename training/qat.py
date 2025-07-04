@@ -392,22 +392,6 @@ class BitwidthSchedulingCallback(TrainerCallback):
                     bit_config[name] = chosen_bit
             set_active_bitwidths(self.model, bit_config)
 
-# # Custom callback to randomize bitwidths before each train step (original random implementation)
-# class BitwidthRandomizationCallback(TrainerCallback):
-#     def __init__(self, model, bit_choices=BIT_CHOICES):
-#         self.model = model
-#         self.bit_choices = bit_choices
-
-#     def on_step_begin(self, args, state, control, **kwargs):
-#         # Randomly assign a bitwidth to each supported layer
-#         bit_config = {}
-#         for name, module in self.model.named_modules():
-#             if hasattr(module, "_quantized_weights") and "lm_head" not in name:
-#                 chosen_bit = random.choice(self.bit_choices)
-#                 # print(f"[BitwidthRandomization] Prepare {name} <- {chosen_bit} bit")
-#                 bit_config[name] = chosen_bit
-#         set_active_bitwidths(self.model, bit_config)
-
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
     return {
