@@ -506,13 +506,25 @@ def main(script_args, training_args, model_args):
 
     print("Output requires_grad:", output_tensor.requires_grad)
 
-    # Debug 7/5:
+    # Debug 7/5: see if loss function requires grad
+    import types
     original_training_step = trainer.training_step
     def wrapped_training_step(self, model, inputs, num_steps):
-        loss = original_training_step(model, inputs, num_steps)
-        print("🚨 Wrapped loss:", loss)
-        return loss
-    import types
+        outputs = model(**inputs)
+        # Try all ways the loss might be computed
+        if isinstance(outputs, dict) and "loss" in outputs:
+            loss = outputs["loss"]
+        elif isinstance(outputs, tuple):
+            loss = outputs[0]
+        else:
+            raise ValueError("Cannot extract loss from model outputs")
+        print("🚨 Loss type:", type(loss))
+        print("🚨 Loss requires_grad:", loss.requires_grad)
+        print("🚨 Loss grad_fn:", loss.grad_fn)
+        print("🚨 Any trainable param?", any(p.requires_grad for p in model.parameters()))
+        # Continue normally
+        self.accelerator.backward(loss)
+        return loss.detach()  # what HF Trainer expects
     trainer.training_step = types.MethodType(wrapped_training_step, trainer)
 
     # Train
