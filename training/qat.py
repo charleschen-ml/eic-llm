@@ -329,21 +329,21 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                # # Apply LoRA if available and compatible
-                # if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
-                #     # print(f"[Forward] {self._layer_name} | Bit: {bit_key} | lora attr exists")
-                #     lora = self._lora_adapters[bit_key]
-                #     # print(f"[Forward] {self._layer_name} | Bit: {bit_key} | lora exists")
-                #     try:
-                #         lora_out = self._lora_adapters[bit_key](input)
-                #         output += lora_out
-                #         # print(f"[Forward] Computed {self._layer_name} | Bit: {bit_key}")
-                #     except RuntimeError as e:
-                #         # print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
-                #         pass
-                # else:
-                #     # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
-                #     pass
+                # Apply LoRA if available and compatible
+                if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
+                    # print(f"[Forward] {self._layer_name} | Bit: {bit_key} | lora attr exists")
+                    lora = self._lora_adapters[bit_key]
+                    # print(f"[Forward] {self._layer_name} | Bit: {bit_key} | lora exists")
+                    try:
+                        lora_out = self._lora_adapters[bit_key](input)
+                        output += lora_out
+                        # print(f"[Forward] Computed {self._layer_name} | Bit: {bit_key}")
+                    except RuntimeError as e:
+                        # print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
+                        pass
+                else:
+                    # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
+                    pass
 
                 return output
             module._original_forward = module.forward # Store original forward
