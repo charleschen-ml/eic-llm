@@ -272,7 +272,8 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
             continue
 
         # 7/5: freeze everything
-        for param in module.parameters(recurse=False):
+        for param in module.parameters(recurse=True):
+            print(f"freeze")
             param.requires_grad = False
 
         # Apply only to Linear layers that were quantized
