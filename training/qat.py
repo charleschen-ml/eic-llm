@@ -505,6 +505,16 @@ def main(script_args, training_args, model_args):
         output_tensor = outputs[0]  # fallback
 
     print("Output requires_grad:", output_tensor.requires_grad)
+
+    # Debug 7/5:
+    original_training_step = trainer.training_step
+    def wrapped_training_step(model, inputs):
+        output = original_training_step(model, inputs)
+        print("🚨 Wrapped loss:", output)
+        return output
+    trainer.training_step = wrapped_training_step
+
+    # Train
     trainer.train()
 
     # Save and push to hub
