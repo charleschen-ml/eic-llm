@@ -508,11 +508,12 @@ def main(script_args, training_args, model_args):
 
     # Debug 7/5:
     original_training_step = trainer.training_step
-    def wrapped_training_step(model, inputs):
-        output = original_training_step(model, inputs)
-        print("🚨 Wrapped loss:", output)
-        return output
-    trainer.training_step = wrapped_training_step
+    def wrapped_training_step(self, model, inputs, num_steps):
+        loss = original_training_step(model, inputs, num_steps)
+        print("🚨 Wrapped loss:", loss)
+        return loss
+    import types
+    trainer.training_step = types.MethodType(wrapped_training_step, trainer)
 
     # Train
     trainer.train()
