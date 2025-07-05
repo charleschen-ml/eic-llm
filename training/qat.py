@@ -344,6 +344,9 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                 return output
             module._original_forward = module.forward # Store original forward
             module.forward = forward_with_quant_and_lora.__get__(module, type(module))
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            print(f"[Still Trainable] {name}, shape: {param.shape}")
 
 # def set_random_bitwidths(model, bit_choices=[4, 8]): # To remove
 #     for name, module in model.named_modules():
