@@ -277,6 +277,10 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                 param.requires_grad = False
             continue
 
+        # 7/5 then enable specified ones
+        for param in module.parameters(recurse=True):
+            param.requires_grad = True
+
         # Apply only to Linear layers that were quantized
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             # ⬇️ Insert this to check if bias is still trainable
