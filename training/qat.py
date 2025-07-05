@@ -275,7 +275,8 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             # ⬇️ Insert this to check if bias is still trainable
             if hasattr(module, "bias") and module.bias is not None:
-                print(f"[Trainable Bias] {name} | requires_grad = {module.bias.requires_grad}")
+                module.bias.requires_grad = False
+                print(f"[Freeze] Bias frozen for {name}")
             module._lora_adapters = nn.ModuleDict()
             module._active_bit = bit_widths[0]
             module._bit_choices = bit_widths
