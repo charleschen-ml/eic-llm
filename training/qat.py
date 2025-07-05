@@ -472,6 +472,10 @@ def main(script_args, training_args, model_args):
     #     set_active_bitwidths(model, config4) # static training
     #     # set_random_bitwidths(model) # dynamic training (deprecated)
 
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            print(f"[Trainable] {name}, shape: {param.shape}")
+
     trainer.train()
 
     # Save and push to hub
