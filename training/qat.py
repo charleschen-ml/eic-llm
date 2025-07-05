@@ -496,6 +496,17 @@ def main(script_args, training_args, model_args):
             print(
                 f"{name} | Active bitwidth: {module._active_bit} | Available: {list(module._lora_adapters.keys())}")
 
+    # Debug 7/5: Check if output requires grad
+    inputs = tokenizer("dummy text", return_tensors="pt").to(model.device)
+    outputs = model(**inputs)
+
+    if isinstance(outputs, dict) and "logits" in outputs:
+        output_tensor = outputs["logits"]
+    else:
+        output_tensor = outputs[0]  # fallback
+
+    print("Output requires_grad:", output_tensor.requires_grad)
+
     trainer.train()
 
     # Save and push to hub
