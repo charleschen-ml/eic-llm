@@ -480,6 +480,22 @@ def main(script_args, training_args, model_args):
         if param.requires_grad:
             print(f"[Trainable] {name}, shape: {param.shape}")
 
+    # Print created lora
+    print("\n🔍 Created LoRA Adapters:")
+    for name, module in model.named_modules():
+        if hasattr(module, "_lora_adapters"):
+            for bw, lora in module._lora_adapters.items():
+                weights = list(lora.parameters())
+                norm = sum(p.norm().item() for p in weights)
+                print(f"{name} | {bw}-bit LoRA norm: {norm:.4f}")
+
+    # Print active lora
+    print("\n🔍 Active LoRA Adapters:")
+    for name, module in model.named_modules():
+        if hasattr(module, "_lora_adapters") and hasattr(module, "_active_bit"):
+            print(
+                f"{name} | Active bitwidth: {module._active_bit} | Available: {list(module._lora_adapters.keys())}")
+
     trainer.train()
 
     # Save and push to hub
