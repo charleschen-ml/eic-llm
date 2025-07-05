@@ -289,6 +289,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                 # print(f"[Forward] input shape: {input.shape}")  # debug
 
                 weight = self._quantized_weights[self._active_bit]
+                print(f"[Hello] {self._layer_name} | Bit: {self._active_bit} | First 5 weights: {w_q.view(-1)[:5]}")
                 # print(f"[Forward] weight shape: {weight.shape}")  # debug
 
                 if weight.shape[1] != input.shape[-1]:
