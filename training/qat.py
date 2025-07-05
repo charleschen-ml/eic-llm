@@ -269,12 +269,11 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     for name, module in model.named_modules():
         # Only apply each linear layer in this module
         if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
-
-            # 7/5: freeze if not in QUANT_LAYERS
-            for param in module.parameters(recurse=False):
-                param.requires_grad = False
-
             continue
+
+        # 7/5: freeze everything
+        for param in module.parameters(recurse=False):
+            param.requires_grad = False
 
         # Apply only to Linear layers that were quantized
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
