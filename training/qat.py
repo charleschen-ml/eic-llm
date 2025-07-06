@@ -287,7 +287,10 @@ def sft_preprocess(example, tokenizer):
 from trl import SFTTrainer
 from transformers.trainer import Trainer
 
-class SFTTrainerWithGradLogging(SFTTrainer):
+from transformers import AdamW
+from trl import SFTTrainer
+
+class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
     def training_step(self, model, inputs, num_steps_in_batch):
         model.train()
         inputs = self._prepare_inputs(inputs)
@@ -307,6 +310,29 @@ class SFTTrainerWithGradLogging(SFTTrainer):
             print(f"[Grad Logging] Error: {e}")
 
         return loss.detach()
+
+    def create_optimizer(self):
+        if self.optimizer is not None:
+            return self.optimizer
+
+        # Filter out 'wte' from optimizer param groups
+        decay_params = []
+        no_decay_params = []
+        for name, param in self.model.named_parameters():
+            if not param.requires_grad or "wte" in name:
+                continue
+            if any(nd in name for nd in ["bias", "LayerNorm.weight"]):
+                no_decay_params.append(param)
+            else:
+                decay_params.append(param)
+
+        grouped_params = [
+            {"params": decay_params, "weight_decay": self.args.weight_decay},
+            {"params": no_decay_params, "weight_decay": 0.0},
+        ]
+
+        self.optimizer = AdamW(grouped_params, lr=self.args.learning_rate)
+        return self.optimizer
 
 def main(script_args, training_args, model_args):
     ################
@@ -386,7 +412,7 @@ def main(script_args, training_args, model_args):
     # Training
     ################
     # trainer = SFTTrainer(
-    trainer=SFTTrainerWithGradLogging( # 7/6: allow print grad norm
+    trainer=SFTTrainerWithGradLoggingNoWTE( # 7/6: allow print grad norm AND prevent wte grad updates
         model=model,
         args=training_args,
         train_dataset=train_dataset, # dataset[script_args.dataset_train_split],
