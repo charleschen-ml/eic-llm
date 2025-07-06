@@ -288,8 +288,7 @@ from trl import SFTTrainer
 from transformers.trainer import Trainer
 
 class SFTTrainerWithGradLogging(SFTTrainer):
-    def training_step(self, model, inputs):
-        # Standard forward + loss
+    def training_step(self, model, inputs, num_steps_in_batch):
         model.train()
         inputs = self._prepare_inputs(inputs)
         loss = self.compute_loss(model, inputs)
