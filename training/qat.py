@@ -266,14 +266,18 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
     During forward pass, apply quantized weight and the matching LoRA adapter.
     """
-    # Step 1: freeze everything
+    # Step 1: Freeze everything
     for param in model.parameters():
         param.requires_grad = False
 
-    # Step 2: unfreeze only LoRA adapter weights
+    # Step 2: Unfreeze embeddings to ensure gradient flow
+    model.transformer.wte.weight.requires_grad = True  # required to avoid loss.requires_grad = False
+    # model.transformer.wpe.weight.requires_grad = True  # optional
+
     for name, module in model.named_modules():
+        # Step 3: Unfreeze LoRA adapter weights
         if hasattr(module, "_lora_adapters"):
-            for bit_key, adapter in module._lora_adapters.items():
+            for adapter in module._lora_adapters.values():
                 for submodule in adapter.modules():
                     for param in submodule.parameters(recurse=True):
                         param.requires_grad = True
@@ -283,25 +287,25 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
         #     for param in module.parameters(recurse=True):
         #         param.requires_grad = False
 
-        # 7/6: freeze only h.0 through h.6, but enable everything else
-        if any(name.startswith(f"transformer.h.{i}.") for i in range(12)):
-            for param in module.parameters(recurse=True):
-                param.requires_grad = False
-        else:
-            # Enable everything else
-            # for param in module.parameters(recurse=True):
-            #     param.requires_grad = False
-            continue
+        # # 7/6: freeze only h.0 through h.6, but enable everything else
+        # if any(name.startswith(f"transformer.h.{i}.") for i in range(12)):
+        #     for param in module.parameters(recurse=True):
+        #         param.requires_grad = False
+        # else:
+        #     # Enable everything else
+        #     # for param in module.parameters(recurse=True):
+        #     #     param.requires_grad = False
+        #     continue
 
         # 7/5: freeze everything
         # for param in module.parameters(recurse=True):
         #     param.requires_grad = False
 
         # Only apply each linear layer in this module
-        if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
-            # for param in module.parameters(recurse=True):
-            #     param.requires_grad = False
-            continue
+        # if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
+        #     # for param in module.parameters(recurse=True):
+        #     #     param.requires_grad = False
+        #     continue
 
         # 7/5 then enable specified ones
         # for param in module.parameters(recurse=True):
