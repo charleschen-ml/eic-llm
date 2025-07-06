@@ -269,13 +269,14 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     for name, module in model.named_modules():
         # 7/6: freeze only h.0 but enable everything else
         if name.startswith("transformer.h.0."):
-            # Enable gradients only for transformer.h.0
-            for param in module.parameters(recurse=True):
-                param.requires_grad = True
-        else:
-            # Freeze everything else
+            # Disable gradients only for transformer.h.0
             for param in module.parameters(recurse=True):
                 param.requires_grad = False
+        else:
+            # Enable everything else
+            # for param in module.parameters(recurse=True):
+            #     param.requires_grad = False
+            continue
 
         # 7/5: freeze everything
         # for param in module.parameters(recurse=True):
