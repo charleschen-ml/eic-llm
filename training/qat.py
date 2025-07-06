@@ -267,9 +267,8 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     During forward pass, apply quantized weight and the matching LoRA adapter.
     """
     for name, module in model.named_modules():
-        # 7/6: freeze only h.0 but enable everything else
-        if name.startswith("transformer.h.0."):
-            # Disable gradients only for transformer.h.0
+        # 7/6: freeze only h.0 through h.6, but enable everything else
+        if any(name.startswith(f"transformer.h.{i}.") for i in range(7)):
             for param in module.parameters(recurse=True):
                 param.requires_grad = False
         else:
