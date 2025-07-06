@@ -275,8 +275,11 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     # model.transformer.wpe.weight.requires_grad = True  # optional
 
     for name, module in model.named_modules():
-        # Step 3: Unfreeze LoRA adapter weights
-        if hasattr(module, "_lora_adapters"):
+        # Step 3: Unfreeze LoRA adapter weights only if in QUANT_LAYERS
+        if (
+                hasattr(module, "_lora_adapters")
+                and any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS)
+        ):
             for adapter in module._lora_adapters.values():
                 for submodule in adapter.modules():
                     for param in submodule.parameters(recurse=True):
