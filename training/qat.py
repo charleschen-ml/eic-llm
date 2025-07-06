@@ -350,10 +350,6 @@ def main(script_args, training_args, model_args):
         with torch.no_grad():
             dummy_input = tokenizer("hello world", return_tensors="pt")["input_ids"].to(model.device)
             model(dummy_input)
-
-        # Long shot but thought I'd give this a try
-        # 🔒 Freeze wte now that the graph is connected
-        model.transformer.wte.weight.requires_grad = False
         
         # Verify lora created
         for name, module in model.named_modules(): 
@@ -399,6 +395,10 @@ def main(script_args, training_args, model_args):
         peft_config=get_peft_config(model_args),
         callbacks = callbacks
     )
+
+    # Long shot but thought I'd give this a try
+    # 🔒 Freeze wte now that the graph is connected
+    model.transformer.wte.weight.requires_grad = False
 
     # Print trainable parameters before training
     for name, param in model.named_parameters():
