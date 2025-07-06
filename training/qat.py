@@ -443,6 +443,14 @@ def main(script_args, training_args, model_args):
     # Train
     trainer.train()
 
+    # 🔍 Confirm wte is excluded from optimizer
+    wte_ref = model.transformer.wte.weight
+    wte_found = any(p is wte_ref for g in trainer.optimizer.param_groups for p in g["params"])
+    if wte_found:
+        print("🚨 wte IS in optimizer! (unexpected)")
+    else:
+        print("✅ wte is NOT in optimizer — LoRA-only training confirmed.")
+
     # Save and push to hub
     trainer.save_model(training_args.output_dir)
     if USE_BITWISE_LORA:
