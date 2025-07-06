@@ -284,6 +284,31 @@ def sft_preprocess(example, tokenizer):
         "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
 
+from trl import SFTTrainer
+from transformers.trainer import Trainer
+
+class SFTTrainerWithGradLogging(SFTTrainer):
+    def training_step(self, model, inputs):
+        # Standard forward + loss
+        model.train()
+        inputs = self._prepare_inputs(inputs)
+        loss = self.compute_loss(model, inputs)
+        loss.backward()
+
+        # 🔍 Grad norm logging
+        try:
+            wte_norm = model.transformer.wte.weight.grad.norm().item()
+            lora_norms = []
+            for name, param in model.named_parameters():
+                if "lora" in name and param.grad is not None:
+                    lora_norms.append(param.grad.norm().item())
+            avg_lora_norm = sum(lora_norms) / len(lora_norms) if lora_norms else 0.0
+            print(f"🧠 Grad Norms | wte: {wte_norm:.4f} | avg lora: {avg_lora_norm:.4f}")
+        except Exception as e:
+            print(f"[Grad Logging] Error: {e}")
+
+        return loss.detach()
+
 def main(script_args, training_args, model_args):
     ################
     # Model init kwargs & Tokenizer
@@ -361,7 +386,8 @@ def main(script_args, training_args, model_args):
     ################
     # Training
     ################
-    trainer = SFTTrainer(
+    # trainer = SFTTrainer(
+    trainer=SFTTrainerWithGradLogging( # 7/6: allow print grad norm
         model=model,
         args=training_args,
         train_dataset=train_dataset, # dataset[script_args.dataset_train_split],
