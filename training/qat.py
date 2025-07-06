@@ -284,10 +284,7 @@ def sft_preprocess(example, tokenizer):
         "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
 
-from trl import SFTTrainer
-from transformers.trainer import Trainer
-
-from transformers import AdamW
+from torch.optim import AdamW
 from trl import SFTTrainer
 
 class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
