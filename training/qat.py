@@ -266,16 +266,16 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
     During forward pass, apply quantized weight and the matching LoRA adapter.
     """
-    for name, module in model.named_modules():
-        # First freeze everything
-        for param in model.parameters():
-            param.requires_grad = False
+    # Step 1: freeze everything
+    for param in model.parameters():
+        param.requires_grad = False
 
-        # Then selectively unfreeze only LoRA adapter weights
-        for name, module in model.named_modules():
-            if hasattr(module, "_lora_adapters"):
-                for adapter in module._lora_adapters.values():
-                    for param in adapter.parameters():
+    # Step 2: unfreeze only LoRA adapter weights
+    for name, module in model.named_modules():
+        if hasattr(module, "_lora_adapters"):
+            for bit_key, adapter in module._lora_adapters.items():
+                for submodule in adapter.modules():
+                    for param in submodule.parameters(recurse=True):
                         param.requires_grad = True
 
         # 7/6: freeze everything except for layers in QUANT_LAYERS
