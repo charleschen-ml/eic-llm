@@ -141,24 +141,21 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
             module._bit_choices = bit_widths
             module._layer_name = name
 
-            # Bind forward method
+            # Custom forward (replaces original forward)
             def forward_with_quant_and_lora(self, input):
-                # If _active_bit is not set, use original forward
+                # Use original forward if bit not active
                 if getattr(self, "_active_bit", None) is None:
                     return self._original_forward(input)
                 
-                bit_key = str(self._active_bit)
-                input = input[0] if isinstance(input, tuple) else input
+                bit_key = str(self._active_bit) # load bit_key in string format for dict key
+                input = input[0] if isinstance(input, tuple) else input # to remove
 
-                weight = self._quantized_weights[self._active_bit]
-
-                if weight.shape[1] != input.shape[-1]:
+                # Compute forward output
+                weight = self._quantized_weights[self._active_bit] # load quantized weights
+                if weight.shape[1] != input.shape[-1]: # transpose matrix for special layers
                     weight = weight.T
-                    # print(f"[Forward] transposed weight shape: {weight.shape}")  # debug
-
-                bias = self.bias
-                output = F.linear(input, weight, bias)
-                # print(f"[Forward] output shape: {output.shape}")  # debug
+                bias = self.bias # load bias
+                output = F.linear(input, weight, bias) # compute output = input * weight.T + bias
 
                 # Lazy init LoRA adapters
                 if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
@@ -167,24 +164,19 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                     in_features = input.shape[-1]
                     out_features = output.shape[-1]
                     for b in self._bit_choices:
-                        # print(f"[bitwise_lora] {self._layer_name} | shape = {self.weight.shape}")  # debug
-                        if self.weight.shape[1] == self.weight.shape[0] * 3:
+                        if self.weight.shape[1] == self.weight.shape[0] * 3: # skip c_attn
                             # print(f"[bitwise_lora] Skipping {self._layer_name} due to shape mismatch risk.")
                             continue
                         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
                         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
-                        # print(f"[bitwise_lora] lora_down shape: {lora_down.weight.shape}")  # debug
-                        # print(f"[bitwise_lora] lora_up shape: {lora_up.weight.shape}")  # debug
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                # Apply LoRA if available and compatible
+                # Compute lora output if adapters exist
                 if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
-                    # print(f"[Forward] {self._layer_name} | Bit: {bit_key} | lora attr exists")
                     lora = self._lora_adapters[bit_key]
-                    # print(f"[Forward] {self._layer_name} | Bit: {bit_key} | lora exists")
                     try:
-                        lora_out = self._lora_adapters[bit_key](input)
+                        lora_out = lora(input)
                         output += lora_out
                         # print(f"[Forward] Computed {self._layer_name} | Bit: {bit_key}")
                     except RuntimeError as e:
