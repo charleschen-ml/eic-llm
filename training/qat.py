@@ -63,21 +63,21 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOI
             for b in bit_widths:
                 w = module.weight.detach().clone().to(module.weight.device)
                 q_w = quantize_tensor(w, num_bits=b)
+                
+                # Print quantized stats
                 w_mean = w.mean().item()
                 q_w_mean = q_w.mean().item()
                 mean_diff = (w - q_w).abs().mean().item()
                 max_val = w.max().item()
                 min_val = w.min().item()
-                print(
-                    f"[Quantize] Precomputed {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_val:.4f} | Min abs weight before: {min_val:.4f}")
-                
-                # Print quantized stats
                 w_flat = w.flatten()
                 q_w_flat = q_w.flatten()
                 pos_w_mean = w_flat[w_flat > 0].mean().item() if (w_flat > 0).any() else 0.0
                 neg_w_mean = w_flat[w_flat < 0].mean().item() if (w_flat < 0).any() else 0.0
                 pos_qw_mean = q_w_flat[q_w_flat > 0].mean().item() if (q_w_flat > 0).any() else 0.0
                 neg_qw_mean = q_w_flat[q_w_flat < 0].mean().item() if (q_w_flat < 0).any() else 0.0
+                print(
+                    f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_val:.4f} | Min abs weight before: {min_val:.4f}")
                 print(f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Min: {min_val:.6f} | Max: {max_val:.6f}")
                 print(f"[Quantize] {name} | Mean weight before: {w_mean:.4f} | Mean quantized weight: {q_w_mean:.4f}")
                 print(f"[Quantize] {name} | Avg pos before: {pos_w_mean:.4f} | Avg neg before: {neg_w_mean:.4f}")
