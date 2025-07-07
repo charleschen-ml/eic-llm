@@ -208,6 +208,7 @@ class BitwidthRandomizationCallback(TrainerCallback):
                 bit_config[name] = chosen_bit
         set_active_bitwidths(self.model, bit_config)
 
+# Preprocess (concatenate) squad dataset context, question, answer
 def sft_preprocess(example, tokenizer):
     answer = example["answers"]["text"][0].strip()
     return {
