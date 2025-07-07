@@ -8,6 +8,7 @@ import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 import random
+import math
 
 from datasets import load_dataset
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
@@ -156,7 +157,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                 output = F.linear(input, weight, bias) # compute output = input * weight.T + bias
 
                 # Lazy init LoRA adapters at runtime
-                if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
+                if not hasattr(self, "_lora_adapters") or not self._lora_adapters: # if lora doesn't exist yet
                     self._lora_adapters = nn.ModuleDict()
                     r = 128  # LoRA rank; can tune this
                     in_features = input.shape[-1]
@@ -167,6 +168,8 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                             continue
                         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
                         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
+                        nn.init.kaiming_uniform_(lora_down.weight, a=math.sqrt(5)) # 7/7: lora init kick start
+                        nn.init.zeros_(lora_up.weight) # 7/7: lora init kick start
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
