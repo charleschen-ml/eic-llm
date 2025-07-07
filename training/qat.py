@@ -169,52 +169,42 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
     For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
     During forward pass, apply quantized weight and the matching LoRA adapter.
     """
-    # Step 1: Freeze everything
+    # Freeze all layers by default
     for param in model.parameters():
         param.requires_grad = False
 
-    # Step 2: Unfreeze embeddings to ensure gradient flow
+    # Workaround: Set requires_grad = True for WTE layer required for gradient flow
+    # Weight updates to this layer is later disabled to train only lora layers
     model.transformer.wte.weight.requires_grad = True  # required to avoid loss.requires_grad = False
-    # model.transformer.wpe.weight.requires_grad = True  # optional
 
     for name, module in model.named_modules():
-        # Step 3: Unfreeze LoRA adapter weights only if in QUANT_LAYERS
+        # Unfreeze LoRA adapter weights listed in QUANT_LAYERS
         if (
-                hasattr(module, "_lora_adapters")
-                and any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS)
+            hasattr(module, "_lora_adapters")
+            and any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS)
         ):
             for adapter in module._lora_adapters.values():
                 for submodule in adapter.modules():
                     for param in submodule.parameters(recurse=True):
                         param.requires_grad = True
 
-        # Apply only to Linear layers that were quantized
+        # Apply lora to layers that have precomputed quantized weights
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            # ⬇️ Insert this to check if bias is still trainable
-            # if hasattr(module, "bias") and module.bias is not None:
-            #     module.bias.requires_grad = False
-            #     print(f"[Freeze] Bias frozen for {name}")
             module._lora_adapters = nn.ModuleDict()
             module._active_bit = bit_widths[0]
             module._bit_choices = bit_widths
-            module._layer_name = name  # temp debug
+            module._layer_name = name
 
+            # Bind forward method
             def forward_with_quant_and_lora(self, input):
                 # If _active_bit is not set, use original forward
                 if getattr(self, "_active_bit", None) is None:
                     return self._original_forward(input)
                 
                 bit_key = str(self._active_bit)
-                # print(f"[Forward] {self._layer_name} | Bit: {bit_key}")
                 input = input[0] if isinstance(input, tuple) else input
-                # print(f"[Forward] input shape: {input.shape}")  # debug
 
                 weight = self._quantized_weights[self._active_bit]
-                # weight.data.fill_(123.456) # intentionally break it
-                # print(f"[Hello] {self._layer_name} | Bit: {self._active_bit} | First 5 weights: {weight.view(-1)[:5]}")
-                # print(
-                #     f"[Hello] Unique: {torch.unique(weight).numel()} | Min: {weight.min():.2f} | Max: {weight.max():.2f}")
-                # print(f"[Forward] weight shape: {weight.shape}")  # debug
 
                 if weight.shape[1] != input.shape[-1]:
                     weight = weight.T
@@ -224,24 +214,6 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                 output = F.linear(input, weight, bias)
                 # print(f"[Forward] output shape: {output.shape}")  # debug
 
-                # # Lazy init LoRA adapters
-                # if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
-                #     self._lora_adapters = nn.ModuleDict()
-                #     r = 32  # LoRA rank; can tune this
-                #     in_features = input.shape[-1]
-                #     out_features = output.shape[-1]
-                #     for b in self._bit_choices:
-                #         # print(f"[bitwise_lora] {self._layer_name} | shape = {self.weight.shape}")  # debug
-                #         if self.weight.shape[1] == self.weight.shape[0] * 3:
-                #             # print(f"[bitwise_lora] Skipping {self._layer_name} due to shape mismatch risk.")
-                #             continue
-                #         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
-                #         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
-                #         # print(f"[bitwise_lora] lora_down shape: {lora_down.weight.shape}")  # debug
-                #         # print(f"[bitwise_lora] lora_up shape: {lora_up.weight.shape}")  # debug
-                #         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                #         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
-
                 # Lazy init LoRA adapters
                 if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
                     self._lora_adapters = nn.ModuleDict()
@@ -249,20 +221,38 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                     in_features = input.shape[-1]
                     out_features = output.shape[-1]
                     for b in self._bit_choices:
-                        # Safely handle fused QKV layers like attn.c_attn
-                        if self.weight.shape[0] == 3 * output.shape[-1]:
-                            # Special case: split QKV LoRA across output dim thirds
-                            qkv_dim = output.shape[-1]
-                            lora_down = nn.Linear(in_features, r * 3, bias=False).to(input.device)
-                            lora_up = nn.Linear(r * 3, out_features, bias=False).to(input.device)
-                            self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                            # Optionally: add comments/logs for visibility
-                            # print(f"[bitwise_lora] Created QKV LoRA for {self._layer_name} | {b} bits")
-                        else:
-                            lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
-                            lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
-                            self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                            # print(f"[bitwise_lora] Created standard LoRA for {self._layer_name} | {b} bits")
+                        # print(f"[bitwise_lora] {self._layer_name} | shape = {self.weight.shape}")  # debug
+                        if self.weight.shape[1] == self.weight.shape[0] * 3:
+                            # print(f"[bitwise_lora] Skipping {self._layer_name} due to shape mismatch risk.")
+                            continue
+                        lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
+                        lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
+                        # print(f"[bitwise_lora] lora_down shape: {lora_down.weight.shape}")  # debug
+                        # print(f"[bitwise_lora] lora_up shape: {lora_up.weight.shape}")  # debug
+                        self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+                        # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
+
+                # # Lazy init LoRA adapters
+                # if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
+                #     self._lora_adapters = nn.ModuleDict()
+                #     r = 32  # LoRA rank; can tune this
+                #     in_features = input.shape[-1]
+                #     out_features = output.shape[-1]
+                #     for b in self._bit_choices:
+                #         # Safely handle fused QKV layers like attn.c_attn
+                #         if self.weight.shape[0] == 3 * output.shape[-1]:
+                #             # Special case: split QKV LoRA across output dim thirds
+                #             qkv_dim = output.shape[-1]
+                #             lora_down = nn.Linear(in_features, r * 3, bias=False).to(input.device)
+                #             lora_up = nn.Linear(r * 3, out_features, bias=False).to(input.device)
+                #             self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+                #             # Optionally: add comments/logs for visibility
+                #             # print(f"[bitwise_lora] Created QKV LoRA for {self._layer_name} | {b} bits")
+                #         else:
+                #             lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
+                #             lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
+                #             self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+                #             # print(f"[bitwise_lora] Created standard LoRA for {self._layer_name} | {b} bits")
 
                 # Apply LoRA if available and compatible
                 if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
@@ -373,11 +363,11 @@ def main(script_args, training_args, model_args):
 
     # Apply quantization
     if USE_QUANTIZATION:
-        model.to("cuda")  # ✅ move to GPU before quantizing
+        model.to("cuda")
+        patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES) # precompute quantized weights
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES)
+        add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add bitwise lora
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-        add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add switchable precision
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
