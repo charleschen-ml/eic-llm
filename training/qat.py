@@ -38,6 +38,7 @@ BIT_CHOICES = [32] # bit choices for LoRA
 # Paths
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
 
+# Symmetric min-max quantization
 def quantize_tensor(tensor, num_bits=4) -> object:
     device = tensor.device # capture tensor device (gpu)
     max_val = tensor.abs().max()
@@ -48,11 +49,8 @@ def quantize_tensor(tensor, num_bits=4) -> object:
     tensor_dequant = tensor_quant * scale
     return tensor_dequant.to(device) # move tensor to gpu
 
+# Precompute quantized weights
 def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES):
-    """
-    Precompute quantized weights per layer per bit width
-    and use a runtime flag to choose the active one.
-    """
     for name, module in model.named_modules():
         if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS): # Only precompute layers in QUANT_LAYERS
             continue
