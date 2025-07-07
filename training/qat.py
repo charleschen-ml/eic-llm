@@ -171,7 +171,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                # Compute lora and add to output (if adapters exist)
+                # Compute lora and add to base output (if adapters exist)
                 if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
                     lora = self._lora_adapters[bit_key]
                     try:
@@ -215,7 +215,7 @@ def sft_preprocess(example, tokenizer):
 
 # This class serves 2 purposes:
 # 1. Workaround to disable gradient updates to the WTE layer while keeping gradient_required = True
-# 2. Log grad norms to compare update strength of WTE vs Lora
+# 2. Log grad norms to compare update strengths of WTE vs Lora
 class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
     def training_step(self, model, inputs, num_steps_in_batch):
         model.train()
