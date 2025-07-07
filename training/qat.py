@@ -1,62 +1,10 @@
-# Copied from TRL to be run from Colab
-
-# Copyright 2025 The HuggingFace Team. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""
-# Full training
-python trl/scripts/sft.py \
-    --model_name_or_path Qwen/Qwen2-0.5B \
-    --dataset_name trl-lib/Capybara \
-    --learning_rate 2.0e-5 \
-    --num_train_epochs 1 \
-    --packing \
-    --per_device_train_batch_size 2 \
-    --gradient_accumulation_steps 8 \
-    --gradient_checkpointing \
-    --logging_steps 25 \
-    --eval_strategy steps \
-    --eval_steps 100 \
-    --output_dir Qwen2-0.5B-SFT \
-    --push_to_hub
-
-# LoRA
-python trl/scripts/sft.py \
-    --model_name_or_path Qwen/Qwen2-0.5B \
-    --dataset_name trl-lib/Capybara \
-    --learning_rate 2.0e-4 \
-    --num_train_epochs 1 \
-    --packing \
-    --per_device_train_batch_size 2 \
-    --gradient_accumulation_steps 8 \
-    --gradient_checkpointing \
-    --logging_steps 25 \
-    --eval_strategy steps \
-    --eval_steps 100 \
-    --use_peft \
-    --lora_r 32 \
-    --lora_alpha 16 \
-    --output_dir Qwen2-0.5B-SFT \
-    --push_to_hub
-"""
-
 import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import re
 import os
+
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 import random
@@ -66,6 +14,8 @@ from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 from transformers.models.auto.modeling_auto import MODEL_FOR_IMAGE_TEXT_TO_TEXT_MAPPING_NAMES
 from transformers.models.gpt2.modeling_gpt2 import Conv1D
 from transformers import TrainerCallback
+from torch.optim import AdamW
+from trl import SFTTrainer
 
 from trl import (
     ModelConfig,
@@ -151,9 +101,9 @@ def set_active_bitwidths(model, bit_config_dict):
     print(f"\n[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            # Always skip deactivating c_attn layers
-            # if "c_attn" in name:
-            #     continue  # ✅ always leave c_attn active
+            # Skip c_attn layers
+            if "c_attn" in name:
+                continue
 
             # Default all layers to inactive
             module._active_bit = None
@@ -232,28 +182,6 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                # # Lazy init LoRA adapters
-                # if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
-                #     self._lora_adapters = nn.ModuleDict()
-                #     r = 32  # LoRA rank; can tune this
-                #     in_features = input.shape[-1]
-                #     out_features = output.shape[-1]
-                #     for b in self._bit_choices:
-                #         # Safely handle fused QKV layers like attn.c_attn
-                #         if self.weight.shape[0] == 3 * output.shape[-1]:
-                #             # Special case: split QKV LoRA across output dim thirds
-                #             qkv_dim = output.shape[-1]
-                #             lora_down = nn.Linear(in_features, r * 3, bias=False).to(input.device)
-                #             lora_up = nn.Linear(r * 3, out_features, bias=False).to(input.device)
-                #             self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                #             # Optionally: add comments/logs for visibility
-                #             # print(f"[bitwise_lora] Created QKV LoRA for {self._layer_name} | {b} bits")
-                #         else:
-                #             lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
-                #             lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
-                #             self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                #             # print(f"[bitwise_lora] Created standard LoRA for {self._layer_name} | {b} bits")
-
                 # Apply LoRA if available and compatible
                 if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
                     # print(f"[Forward] {self._layer_name} | Bit: {bit_key} | lora attr exists")
@@ -295,9 +223,6 @@ def sft_preprocess(example, tokenizer):
     return {
         "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
-
-from torch.optim import AdamW
-from trl import SFTTrainer
 
 class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
     def training_step(self, model, inputs, num_steps_in_batch):
@@ -361,7 +286,13 @@ def main(script_args, training_args, model_args):
     # Create model
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, **model_kwargs)
 
-    # Apply quantization
+    # Create tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True
+    )
+    eos = tokenizer.eos_token if tokenizer is not None else ""
+
+    # Precompute quantized weights and add bitwise lora
     if USE_QUANTIZATION:
         model.to("cuda")
         patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES) # precompute quantized weights
@@ -369,12 +300,6 @@ def main(script_args, training_args, model_args):
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add bitwise lora
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
 
-    # Create tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True
-    )
-    eos = tokenizer.eos_token if tokenizer is not None else ""
-    
     # Dummy forward to create LoRA modules
     if USE_BITWISE_LORA:
         # Use callback to randomize bitwidths before each train step
