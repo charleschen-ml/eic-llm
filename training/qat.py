@@ -295,16 +295,18 @@ def main(script_args, training_args, model_args):
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add bitwise lora
 
     # Dummy forward to create LoRA modules (lora created at runtime to match dimensions)
-    print("Before patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
+
     if USE_BITWISE_LORA:
         # Use callback to randomize bitwidths before each train step
         callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
         
         # Dummy pass to create lora
         model.eval()
+        print("Before patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
         with torch.no_grad():
             dummy_input = tokenizer("hello world", return_tensors="pt")["input_ids"].to(model.device)
             model(dummy_input)
+        print("After patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
         
         # Verify lora created
         for name, module in model.named_modules(): 
@@ -312,7 +314,6 @@ def main(script_args, training_args, model_args):
                 print(f"{name}: {list(module._lora_adapters.keys())}")
     else:
         callbacks = []
-    print("After patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
 
     ################
     # Dataset
