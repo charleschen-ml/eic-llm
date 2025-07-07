@@ -295,7 +295,7 @@ def main(script_args, training_args, model_args):
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add bitwise lora
 
     # Dummy forward to create LoRA modules (lora created at runtime to match dimensions)
-    print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
+    print("Before patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
     if USE_BITWISE_LORA:
         # Use callback to randomize bitwidths before each train step
         callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
@@ -312,7 +312,7 @@ def main(script_args, training_args, model_args):
                 print(f"{name}: {list(module._lora_adapters.keys())}")
     else:
         callbacks = []
-    print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
+    print("After patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
 
     ################
     # Dataset
