@@ -227,7 +227,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                 # Lazy init LoRA adapters
                 if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
                     self._lora_adapters = nn.ModuleDict()
-                    r = 8  # LoRA rank; can tune this
+                    r = 32  # LoRA rank; can tune this
                     in_features = input.shape[-1]
                     out_features = output.shape[-1]
                     for b in self._bit_choices:
