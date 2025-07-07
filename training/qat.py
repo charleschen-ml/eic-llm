@@ -131,7 +131,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                         param.requires_grad = True
 
         # Apply lora to layers that have precomputed quantized weights
-        if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
+        if isinstance(module, (nn.Linear, Conv1D)): # 7/7: removed hasattr(module, "_quantized_weights")
             module._lora_adapters = nn.ModuleDict()
             module._active_bit = bit_widths[0]
             module._bit_choices = bit_widths
