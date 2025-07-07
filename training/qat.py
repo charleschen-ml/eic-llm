@@ -282,6 +282,12 @@ def main(script_args, training_args, model_args):
     # Create model
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, **model_kwargs)
 
+    # Create tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True
+    )
+    eos = tokenizer.eos_token if tokenizer is not None else ""
+
     # Precompute quantized weights and add bitwise lora
     if USE_QUANTIZATION:
         model.to("cuda")
@@ -289,12 +295,6 @@ def main(script_args, training_args, model_args):
         print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add bitwise lora
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
-
-    # Create tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True
-    )
-    eos = tokenizer.eos_token if tokenizer is not None else ""
 
     # Dummy forward to create LoRA modules
     if USE_BITWISE_LORA:
