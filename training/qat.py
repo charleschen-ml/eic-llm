@@ -140,6 +140,7 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
             module._active_bit = bit_widths[0]
             module._bit_choices = bit_widths
             module._layer_name = name
+            module._original_forward = module.forward  # Store original forward
 
             # Custom forward (replaces original forward)
             def forward_with_quant_and_lora(self, input):
@@ -187,7 +188,8 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                     pass
 
                 return output
-            module._original_forward = module.forward # Store original forward
+
+            # Bind custom forward
             module.forward = forward_with_quant_and_lora.__get__(module, type(module))
 
 # Custom callback to randomize bitwidths before each train step
