@@ -152,8 +152,8 @@ def set_active_bitwidths(model, bit_config_dict):
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             # Always skip deactivating c_attn layers
-            if "c_attn" in name:
-                continue  # ✅ always leave c_attn active
+            # if "c_attn" in name:
+            #     continue  # ✅ always leave c_attn active
 
             # Default all layers to inactive
             module._active_bit = None
@@ -224,6 +224,24 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                 output = F.linear(input, weight, bias)
                 # print(f"[Forward] output shape: {output.shape}")  # debug
 
+                # # Lazy init LoRA adapters
+                # if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
+                #     self._lora_adapters = nn.ModuleDict()
+                #     r = 32  # LoRA rank; can tune this
+                #     in_features = input.shape[-1]
+                #     out_features = output.shape[-1]
+                #     for b in self._bit_choices:
+                #         # print(f"[bitwise_lora] {self._layer_name} | shape = {self.weight.shape}")  # debug
+                #         if self.weight.shape[1] == self.weight.shape[0] * 3:
+                #             # print(f"[bitwise_lora] Skipping {self._layer_name} due to shape mismatch risk.")
+                #             continue
+                #         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
+                #         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
+                #         # print(f"[bitwise_lora] lora_down shape: {lora_down.weight.shape}")  # debug
+                #         # print(f"[bitwise_lora] lora_up shape: {lora_up.weight.shape}")  # debug
+                #         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+                #         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
+
                 # Lazy init LoRA adapters
                 if not hasattr(self, "_lora_adapters") or not self._lora_adapters:
                     self._lora_adapters = nn.ModuleDict()
@@ -231,16 +249,20 @@ def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
                     in_features = input.shape[-1]
                     out_features = output.shape[-1]
                     for b in self._bit_choices:
-                        # print(f"[bitwise_lora] {self._layer_name} | shape = {self.weight.shape}")  # debug
-                        if self.weight.shape[1] == self.weight.shape[0] * 3:
-                            # print(f"[bitwise_lora] Skipping {self._layer_name} due to shape mismatch risk.")
-                            continue
-                        lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
-                        lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
-                        # print(f"[bitwise_lora] lora_down shape: {lora_down.weight.shape}")  # debug
-                        # print(f"[bitwise_lora] lora_up shape: {lora_up.weight.shape}")  # debug
-                        self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                        # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
+                        # Safely handle fused QKV layers like attn.c_attn
+                        if self.weight.shape[0] == 3 * output.shape[-1]:
+                            # Special case: split QKV LoRA across output dim thirds
+                            qkv_dim = output.shape[-1]
+                            lora_down = nn.Linear(in_features, r * 3, bias=False).to(input.device)
+                            lora_up = nn.Linear(r * 3, out_features, bias=False).to(input.device)
+                            self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+                            # Optionally: add comments/logs for visibility
+                            # print(f"[bitwise_lora] Created QKV LoRA for {self._layer_name} | {b} bits")
+                        else:
+                            lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
+                            lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
+                            self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+                            # print(f"[bitwise_lora] Created standard LoRA for {self._layer_name} | {b} bits")
 
                 # Apply LoRA if available and compatible
                 if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
