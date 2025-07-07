@@ -67,7 +67,7 @@ bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/ful
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
 BIT_CHOICES = [2] # bit choices for LoRA. Needs to match training/qat.py
-MAX_INF_SIZE = 10 # max number of examples to infer
+MAX_INF_SIZE = 100 # max number of examples to infer
 
 # Inference bit config
 config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
