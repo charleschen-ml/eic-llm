@@ -108,11 +108,9 @@ def set_active_bitwidths(model, bit_config_dict):
                     module._active_bit = bit  # ✅ only activate if explicitly configured
                     # print(f"[set_active] set {name} to {bit} bits")
 
+# 1. Configures requires_grad for all layers
+# 2. Define custom forward, which creates lora at runtime
 def add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES):
-    """
-    For each Linear layer in transformer.h.0, attach multiple LoRA adapters — one per bit-width.
-    During forward pass, apply quantized weight and the matching LoRA adapter.
-    """
     # Freeze all layers by default
     for param in model.parameters():
         param.requires_grad = False
