@@ -292,11 +292,10 @@ def main(script_args, training_args, model_args):
     if USE_QUANTIZATION:
         model.to("cuda")
         patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES) # precompute quantized weights
-        print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add bitwise lora
-        print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
 
-    # Dummy forward to create LoRA modules
+    # Dummy forward to create LoRA modules (lora created at runtime to match dimensions)
+    print("Before patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
     if USE_BITWISE_LORA:
         # Use callback to randomize bitwidths before each train step
         callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
@@ -312,7 +311,8 @@ def main(script_args, training_args, model_args):
             if hasattr(module, "_lora_adapters"):
                 print(f"{name}: {list(module._lora_adapters.keys())}")
     else:
-        callbacks = []        
+        callbacks = []
+    print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
 
     ################
     # Dataset
