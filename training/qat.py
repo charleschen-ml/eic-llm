@@ -196,7 +196,7 @@ class BitwidthRandomizationCallback(TrainerCallback):
 
     def on_step_begin(self, args, state, control, **kwargs):
         # Randomly assign a bitwidth to each supported layer
-        bit_config = {}
+        bit_config = {} # e.g. {"transformer.h.0": 4, "transformer.h.1": 8}
         for name, module in self.model.named_modules():
             if hasattr(module, "_quantized_weights") and "lm_head" not in name:
                 chosen_bit = random.choice(self.bit_choices)
