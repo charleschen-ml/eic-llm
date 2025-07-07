@@ -219,6 +219,8 @@ class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
         model.train()
         inputs = self._prepare_inputs(inputs)
         loss = self.compute_loss(model, inputs)
+        print(f"🔥 compute_loss: loss.requires_grad = {loss.requires_grad}")
+        print(f"🔥 compute_loss: loss.grad_fn = {loss.grad_fn}")
         loss.backward()
 
         # 🔍 Grad norm logging
