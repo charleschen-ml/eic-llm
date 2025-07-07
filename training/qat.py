@@ -87,7 +87,7 @@ class QATArguments:
                  use_bitwise_lora=True,
                  quant_layers=[6, 8, 10, 11],
                  bit_choices=[8, 16],
-                 use_cyclic_bitwidth=True,
+                 bitwidth_schedule="static",
                  cyclic_repeat_per_bit=1,
                  adapter_path=None):
         self.max_dataset_size = max_dataset_size
@@ -95,7 +95,7 @@ class QATArguments:
         self.use_bitwise_lora = use_bitwise_lora
         self.quant_layers = quant_layers
         self.bit_choices = bit_choices
-        self.use_cyclic_bitwidth = use_cyclic_bitwidth
+        self.bitwidth_schedule = bitwidth_schedule  # "static", "cyclic", or "random"
         self.cyclic_repeat_per_bit = cyclic_repeat_per_bit
         self.adapter_path = adapter_path or "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
     
@@ -128,6 +128,11 @@ def get_cyclic_bitwidth(step, bit_choices, repeat_per_bit=1):
         backward_step = cycle_step - forward_steps
         bit_index = len(bit_choices) - 2 - backward_step // repeat_per_bit
     
+    return bit_choices[bit_index]
+
+def get_static_bitwidth(step, bit_choices):
+    # Simply cycle through bitwidths based on step
+    bit_index = step % len(bit_choices)
     return bit_choices[bit_index]
 
 def quantize_tensor(tensor, num_bits=4) -> object:
@@ -269,17 +274,17 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
 
 # Custom callback to handle bit-width scheduling during training
 class BitwidthSchedulingCallback(TrainerCallback):
-    def __init__(self, model, bit_choices, use_cyclic, cyclic_repeat_per_bit):
+    def __init__(self, model, bit_choices, bitwidth_schedule, cyclic_repeat_per_bit):
         self.model = model
         self.bit_choices = bit_choices
-        self.use_cyclic = use_cyclic 
+        self.bitwidth_schedule = bitwidth_schedule  # "static", "cyclic", or "random"
         self.cyclic_repeat_per_bit = cyclic_repeat_per_bit
         self.step_count = 0
 
     def on_step_begin(self, args, state, control, **kwargs):
         self.step_count += 1
         
-        if self.use_cyclic:
+        if self.bitwidth_schedule == "cyclic":
             # Use cyclic scheduling with automatic period based on bit choices
             current_bit = get_cyclic_bitwidth(
                 self.step_count, 
@@ -297,13 +302,24 @@ class BitwidthSchedulingCallback(TrainerCallback):
                 print(f"[CyclicBitwidth] Step {self.step_count}: Using {current_bit}-bit quantization")
             
             set_active_bitwidths(self.model, bit_config)
-        else:
+        elif self.bitwidth_schedule == "random":
             # Use random bit-width assignment (original behavior)
             bit_config = {}
             for name, module in self.model.named_modules():
                 if hasattr(module, "_quantized_weights") and "lm_head" not in name:
                     chosen_bit = random.choice(self.bit_choices)
                     bit_config[name] = chosen_bit
+            set_active_bitwidths(self.model, bit_config)
+        else:
+            bit_config = {}
+            current_bit = get_static_bitwidth(
+                self.step_count, 
+                self.bit_choices
+            )
+            for name, module in self.model.named_modules():
+                if hasattr(module, "_quantized_weights") and "lm_head" not in name:
+                    bit_config[name] = current_bit
+            
             set_active_bitwidths(self.model, bit_config)
 
 def sft_preprocess(example, tokenizer):
@@ -361,14 +377,16 @@ def main(script_args, training_args, model_args, qat_args):
         callbacks = [BitwidthSchedulingCallback(
             model, 
             bit_choices=qat_args.bit_choices,
-            use_cyclic=qat_args.use_cyclic_bitwidth,
+            bitwidth_schedule=qat_args.bitwidth_schedule,
             cyclic_repeat_per_bit=qat_args.cyclic_repeat_per_bit
         )]
         
-        if qat_args.use_cyclic_bitwidth:
-            print(f"[Config] Using cyclic bit-width scheduling: {min(qat_args.bit_choices)}-{max(qat_args.bit_choices)} bits")
+        if qat_args.bitwidth_schedule in ["cyclic", "static", "random"]:
+            print(f"[Config] Using {qat_args.bitwidth_schedule} bit-width assignment from: {qat_args.bit_choices}")
         else:
-            print(f"[Config] Using random bit-width assignment from: {qat_args.bit_choices}")
+            print(f"[Warning] Unknown bitwidth_schedule: {qat_args.bitwidth_schedule}. Defaulting to 'static'")
+            qat_args.bitwidth_schedule = "static"
+            print(f"[Config] Using {qat_args.bitwidth_schedule} bit-width assignment from: {qat_args.bit_choices}")
         
         # Dummy pass to create lora
         model.eval()
@@ -464,12 +482,10 @@ def make_parser(subparsers: argparse._SubParsersAction = None):
                        help="Comma-separated list of h.* layers to quantize")
     parser.add_argument("--bit_choices", type=str, default="8,16",
                        help="Comma-separated list of bit choices for LoRA")
-    parser.add_argument("--use_cyclic_bitwidth", action="store_true", default=True,
-                       help="Enable cyclic bit-width scheduling")
-    parser.add_argument("--no_cyclic_bitwidth", dest="use_cyclic_bitwidth", action="store_false",
-                       help="Disable cyclic bit-width scheduling")
+    parser.add_argument("--bitwidth_schedule", type=str, default="static", choices=["static", "cyclic", "random"],
+                       help="Bit-width scheduling strategy: 'static' (default), 'cyclic', or 'random'")
     parser.add_argument("--cyclic_repeat_per_bit", type=int, default=1,
-                       help="Number of times to repeat each bit-width")
+                       help="Number of times to repeat each bit-width (only used with cyclic schedule)")
     parser.add_argument("--adapter_path", type=str, 
                        default="/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt",
                        help="Path to save the bitwise LoRA adapter")
@@ -495,7 +511,7 @@ if __name__ == "__main__":
         use_bitwise_lora=args.use_bitwise_lora,
         quant_layers=args.quant_layers,
         bit_choices=args.bit_choices,
-        use_cyclic_bitwidth=args.use_cyclic_bitwidth,
+        bitwidth_schedule=args.bitwidth_schedule,
         cyclic_repeat_per_bit=args.cyclic_repeat_per_bit,
         adapter_path=args.adapter_path
     )
