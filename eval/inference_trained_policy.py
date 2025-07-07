@@ -66,7 +66,7 @@ bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/ful
 # Settings
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
-BIT_CHOICES = [2] # bit choices for LoRA. Needs to match training/qat.py
+BIT_CHOICES = [32] # bit choices for LoRA. Needs to match training/qat.py
 MAX_INF_SIZE = 100 # max number of examples to infer
 
 # Inference bit config
