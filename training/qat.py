@@ -50,14 +50,14 @@ def quantize_tensor(tensor, num_bits=4) -> object:
 
 def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOICES):
     """
-    For each nn.Linear layer, store quantized weights for multiple bit-widths
+    Precompute quantized weights per layer per bit width
     and use a runtime flag to choose the active one.
     """
     for name, module in model.named_modules():
-        if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS):
+        if not any(name.startswith(f"transformer.h.{i}.") for i in QUANT_LAYERS): # Only precompute layers in QUANT_LAYERS
             continue
-        if any(skip in name for skip in ["lm_head", "wte"]):
-            continue  # ✅ skip output and embedding layers
+        if any(skip in name for skip in ["lm_head", "wte"]): # skip output and embedding layers
+            continue
         if isinstance(module, (nn.Linear, Conv1D)):
             module._quantized_weights = {}  # e.g., {4: tensor, 8: tensor}
 
@@ -71,30 +71,26 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths=BIT_CHOI
                 max_val = w.max().item()
                 min_val = w.min().item()
                 print(
-                    f"[Quantize] Precomputed {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_val:.4f} | Min abs weight before: {min_val:.4f} | Mean weight before: {w_mean:.4f} | Mean quantized weight: {q_w_mean:.4f}")
+                    f"[Quantize] Precomputed {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_val:.4f} | Min abs weight before: {min_val:.4f}")
                 
-                ###
-                # Flatten tensors
+                # Print quantized stats
                 w_flat = w.flatten()
                 q_w_flat = q_w.flatten()
-
-                # Masked means
                 pos_w_mean = w_flat[w_flat > 0].mean().item() if (w_flat > 0).any() else 0.0
                 neg_w_mean = w_flat[w_flat < 0].mean().item() if (w_flat < 0).any() else 0.0
                 pos_qw_mean = q_w_flat[q_w_flat > 0].mean().item() if (q_w_flat > 0).any() else 0.0
                 neg_qw_mean = q_w_flat[q_w_flat < 0].mean().item() if (q_w_flat < 0).any() else 0.0
-
                 print(f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Min: {min_val:.6f} | Max: {max_val:.6f}")
                 print(f"[Quantize] {name} | Mean weight before: {w_mean:.4f} | Mean quantized weight: {q_w_mean:.4f}")
                 print(f"[Quantize] {name} | Avg pos before: {pos_w_mean:.4f} | Avg neg before: {neg_w_mean:.4f}")
                 print(f"[Quantize] {name} | Avg pos quant:  {pos_qw_mean:.4f} | Avg neg quant:  {neg_qw_mean:.4f}")
                 print(f"[Quantize] {name} | First 10 elements (original):  {w_flat[:10].tolist()}")
                 print(f"[Quantize] {name} | First 10 elements (quantized): {q_w_flat[:10].tolist()}")
-                ###
-                
+
+                # Store precomputed quantized weights
                 module._quantized_weights[b] = q_w
 
-            module._active_bit = bit_widths[0]  # default
+            module._active_bit = bit_widths[0]  # set default
             module._bit_choices = bit_widths
 
 def set_active_bitwidths(model, bit_config_dict):
