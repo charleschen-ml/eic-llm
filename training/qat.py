@@ -214,6 +214,9 @@ def sft_preprocess(example, tokenizer):
         "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
 
+# This class serves 2 purposes:
+# 1. Workaround to disable gradient updates to the WTE layer while keeping gradient_required = True
+# 2. Log grad norms to compare update strength of WTE vs Lora
 class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
     def training_step(self, model, inputs, num_steps_in_batch):
         model.train()
