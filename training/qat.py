@@ -295,7 +295,6 @@ def main(script_args, training_args, model_args):
         add_bitwise_lora_adapters(model, bit_widths=BIT_CHOICES) # add bitwise lora
 
     # Dummy forward to create LoRA modules (lora created at runtime to match dimensions)
-
     if USE_BITWISE_LORA:
         # Use callback to randomize bitwidths before each train step
         callbacks = [BitwidthRandomizationCallback(model, bit_choices=BIT_CHOICES)]
