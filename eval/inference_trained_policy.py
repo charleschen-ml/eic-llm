@@ -70,7 +70,7 @@ class InferenceArguments:
                  bit_choices="32",
                  max_inf_size=100,
                  quant_layers="6,11",
-                 inf_bit_config="config4"):
+                 inf_bit_config={f"transformer.h.{i}": 32 for i in range(12)}):
         self.eval_json_path = eval_json_path
         self.adapter_path = adapter_path
         self.output_csv_path = output_csv_path
@@ -159,9 +159,8 @@ def make_parser(subparsers: argparse._SubParsersAction = None):
                        help="Maximum number of examples to infer")
     parser.add_argument("--quant_layers", type=str, default="6,11",
                        help="Comma-separated list of h.* layers to quantize")
-    parser.add_argument("--inf_bit_config", type=str, default="config4", 
-                       choices=["config1", "config2", "config3", "config4"],
-                       help="Inference bit configuration to use")
+    parser.add_argument("--inf_bit_config", type=str, default=None,
+                       help="JSON string for inference bit configuration (e.g., '{\"transformer.h.0\": 8, \"transformer.h.1\": 4}'). Default: 32 bits for all layers")
     
     return parser
 
@@ -184,21 +183,16 @@ def main(script_args, training_args, model_args, inference_args):
     else:
         quant_layers = inference_args.quant_layers
     
-    # Define inference bit configurations
-    config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
-    config2 = {f"transformer.h.{i}": 4 for i in range(12)}
-    config3 = {f"transformer.h.{i}": 8 for i in range(12)}
-    # config4 = {f"transformer.h.11": 32}
-    config4 = {f"transformer.h.11": 8, f"transformer.h.6": 8}
-    
-    # Select inference bit config based on argument
-    inf_bit_config_map = {
-        "config1": config1,
-        "config2": config2,
-        "config3": config3,
-        "config4": config4
-    }
-    INF_BIT_CONFIG = inf_bit_config_map[inference_args.inf_bit_config]
+    # Parse inference bit configuration
+    if isinstance(inference_args.inf_bit_config, str):
+        try:
+            INF_BIT_CONFIG = json.loads(inference_args.inf_bit_config)
+        except json.JSONDecodeError:
+            print(f"Warning: Invalid JSON for inf_bit_config: {inference_args.inf_bit_config}")
+            print("Using default: 32 bits for all layers")
+            INF_BIT_CONFIG = {f"transformer.h.{i}": 32 for i in range(12)}
+    else:
+        INF_BIT_CONFIG = inference_args.inf_bit_config
     
     # Load validation examples from JSON
     with open(inference_args.eval_json_path, "r") as f:
