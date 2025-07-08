@@ -22,6 +22,7 @@ import shutil
 import evaluate
 import json
 import csv
+from math import ceil
 from tqdm import tqdm
 import torch
 from peft import get_peft_model, PeftModel
@@ -57,7 +58,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic e
 torch.use_deterministic_algorithms(True)
 
 # Paths
-eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json" #  eval_set.json (regular) or train_set.json (overfit)
+eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json" #  eval_set.json (regular) or train_set.json (overfit)
 adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or gpt2-sft
 OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
 bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
@@ -65,22 +66,19 @@ bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/ful
 # Settings
 USE_QUANTIZATION = True
 USE_BITWISE_LORA = True
-BIT_CHOICES = [8, 16] # bit choices for LoRA. Needs to match training/qat.py
-QUANT_LAYERS = [6, 8, 10, 11] # h.* layers to quantize. Needs to match training/qat.py
+BIT_CHOICES = [32] # bit choices for LoRA. Needs to match training/qat.py
+MAX_INF_SIZE = 100 # max number of examples to infer
 
 # Inference bit config
 config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
 config2 = {f"transformer.h.{i}": 4 for i in range(12)}
 config3 = {f"transformer.h.{i}": 8 for i in range(12)}
-config4 = {f"transformer.h.11": 8}
-config5 = {f"transformer.h.11": 4}
-config6 = {f"transformer.h.11": 16}
-config7 = {f"transformer.h.6": 4}
-INF_BIT_CONFIG = config6
+config4 = {f"transformer.h.11": 32}
+INF_BIT_CONFIG = config4
 
 # Load validation examples from JSON
 with open(eval_json_path, "r") as f:
-    dataset = [json.loads(line) for line in f][:100]
+    dataset = [json.loads(line) for line in f][:MAX_INF_SIZE]
 print(f"Examples used for inference: {len(dataset)}")
 
 # Load SQuAD metric
