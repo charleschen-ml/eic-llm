@@ -346,7 +346,6 @@ class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
         self.optimizer = AdamW(grouped_params, lr=self.args.learning_rate)
         return self.optimizer
 
-def main(script_args, training_args, model_args):
 def main(script_args, training_args, model_args, qat_args):
     """
     Main training function with configurable parameters.
