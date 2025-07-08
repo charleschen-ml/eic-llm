@@ -22,6 +22,7 @@ import shutil
 import evaluate
 import json
 import csv
+import argparse
 from math import ceil
 from tqdm import tqdm
 import torch
@@ -57,33 +58,29 @@ import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 
-# Paths
-eval_json_path = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json" #  eval_set.json (regular) or train_set.json (overfit)
-adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat" # gpt2-qat or gpt2-sft
-OUTPUT_CSV_PATH = "/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv" # inference output
-bitwise_lora_adapter_path = "/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt"
-
-# Settings
-USE_QUANTIZATION = True
-USE_BITWISE_LORA = True
-BIT_CHOICES = [32] # bit choices for LoRA. Needs to match training/qat.py
-MAX_INF_SIZE = 100 # max number of examples to infer
-QUANT_LAYERS = [6, 11] # h.* layers to quantize. Needs to match training/qat.py
-
-# Inference bit config
-config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
-config2 = {f"transformer.h.{i}": 4 for i in range(12)}
-config3 = {f"transformer.h.{i}": 8 for i in range(12)}
-config4 = {f"transformer.h.11": 32}
-INF_BIT_CONFIG = config4
-
-# Load validation examples from JSON
-with open(eval_json_path, "r") as f:
-    dataset = [json.loads(line) for line in f][:MAX_INF_SIZE]
-print(f"Examples used for inference: {len(dataset)}")
-
-# Load SQuAD metric
-metric = evaluate.load("squad")
+# Custom arguments for inference-specific parameters
+class InferenceArguments:
+    def __init__(self, 
+                 eval_json_path="/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json",
+                 adapter_path="/content/drive/MyDrive/Colab_Notebooks/gpt2-qat",
+                 output_csv_path="/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv",
+                 bitwise_lora_adapter_path="/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt",
+                 use_quantization=True,
+                 use_bitwise_lora=True,
+                 bit_choices="32",
+                 max_inf_size=100,
+                 quant_layers="6,11",
+                 inf_bit_config="config4"):
+        self.eval_json_path = eval_json_path
+        self.adapter_path = adapter_path
+        self.output_csv_path = output_csv_path
+        self.bitwise_lora_adapter_path = bitwise_lora_adapter_path
+        self.use_quantization = use_quantization
+        self.use_bitwise_lora = use_bitwise_lora
+        self.bit_choices = bit_choices
+        self.max_inf_size = max_inf_size
+        self.quant_layers = quant_layers
+        self.inf_bit_config = inf_bit_config
 
 # Score squad metrics (EM, F1) after inference
 def score_squad(predictions, references):
@@ -99,7 +96,7 @@ def score_squad(predictions, references):
     return results
 
 # Save inference outputs to csv
-def save_predictions_to_csv(predictions, references):
+def save_predictions_to_csv(predictions, references, output_csv_path):
     metric = evaluate.load("squad")
     rows = []
 
@@ -121,19 +118,96 @@ def save_predictions_to_csv(predictions, references):
         })
         rows.sort(key=lambda x: x["f1_score"])  # sort by worst predictions
 
-    with open(OUTPUT_CSV_PATH, "w", newline='', encoding='utf-8') as csvfile:
+    with open(output_csv_path, "w", newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=["prediction", "reference", "exact_match", "f1_score"])
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"✅ Saved {len(rows)} results to {OUTPUT_CSV_PATH}")
+    print(f"✅ Saved {len(rows)} results to {output_csv_path}")
 
-if __name__ == "__main__":
-    # parse script arguments
-    parser = HfArgumentParser((ScriptArguments, PPOConfig, ModelConfig))
-    script_args, training_args, model_args = parser.parse_args_into_dataclasses()
+def make_parser(subparsers: argparse._SubParsersAction = None):
+    dataclass_types = (ScriptArguments, PPOConfig, ModelConfig)
+    if subparsers is not None:
+        parser = subparsers.add_parser("inference", help="Run the inference script", dataclass_types=dataclass_types)
+    else:
+        parser = HfArgumentParser(dataclass_types)
+    
+    # Add inference-specific arguments
+    parser.add_argument("--eval_json_path", type=str, 
+                       default="/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json",
+                       help="Path to evaluation JSON file")
+    parser.add_argument("--adapter_path", type=str, 
+                       default="/content/drive/MyDrive/Colab_Notebooks/gpt2-qat",
+                       help="Path to adapter directory")
+    parser.add_argument("--output_csv_path", type=str, 
+                       default="/content/drive/MyDrive/Colab_Notebooks/eic_llm/inference_output.csv",
+                       help="Path to save inference output CSV")
+    parser.add_argument("--bitwise_lora_adapter_path", type=str, 
+                       default="/content/drive/MyDrive/Colab_Notebooks/gpt2-qat/full_qat_model.pt",
+                       help="Path to bitwise LoRA adapter file")
+    parser.add_argument("--use_quantization", action="store_true", default=True,
+                       help="Whether to apply quantization")
+    parser.add_argument("--no_quantization", dest="use_quantization", action="store_false",
+                       help="Disable quantization")
+    parser.add_argument("--use_bitwise_lora", action="store_true", default=True,
+                       help="Whether to use bitwise LoRA adapters")
+    parser.add_argument("--no_bitwise_lora", dest="use_bitwise_lora", action="store_false",
+                       help="Disable bitwise LoRA adapters")
+    parser.add_argument("--bit_choices", type=str, default="32",
+                       help="Comma-separated list of bit choices for LoRA")
+    parser.add_argument("--max_inf_size", type=int, default=100,
+                       help="Maximum number of examples to infer")
+    parser.add_argument("--quant_layers", type=str, default="6,11",
+                       help="Comma-separated list of h.* layers to quantize")
+    parser.add_argument("--inf_bit_config", type=str, default="config4", 
+                       choices=["config1", "config2", "config3", "config4"],
+                       help="Inference bit configuration to use")
+    
+    return parser
+
+def main(script_args, training_args, model_args, inference_args):
+    """
+    Main inference function with configurable parameters.
+    
+    Args:
+        script_args, training_args, model_args: Standard TRL arguments
+        inference_args: InferenceArguments object containing inference-specific parameters
+    """
+    # Convert string arguments to lists if they're strings
+    if isinstance(inference_args.bit_choices, str):
+        bit_choices = [int(x.strip()) for x in inference_args.bit_choices.split(",")]
+    else:
+        bit_choices = inference_args.bit_choices
+        
+    if isinstance(inference_args.quant_layers, str):
+        quant_layers = [int(x.strip()) for x in inference_args.quant_layers.split(",")]
+    else:
+        quant_layers = inference_args.quant_layers
+    
+    # Define inference bit configurations
+    config1 = {f"transformer.h.{i}": 4 if i % 2 == 0 else 8 for i in range(12)}  # for 12 layers
+    config2 = {f"transformer.h.{i}": 4 for i in range(12)}
+    config3 = {f"transformer.h.{i}": 8 for i in range(12)}
+    # config4 = {f"transformer.h.11": 32}
+    config4 = {f"transformer.h.11": 8, f"transformer.h.6": 8}
+    
+    # Select inference bit config based on argument
+    inf_bit_config_map = {
+        "config1": config1,
+        "config2": config2,
+        "config3": config3,
+        "config4": config4
+    }
+    INF_BIT_CONFIG = inf_bit_config_map[inference_args.inf_bit_config]
+    
+    # Load validation examples from JSON
+    with open(inference_args.eval_json_path, "r") as f:
+        dataset = [json.loads(line) for line in f][:inference_args.max_inf_size]
+    print(f"Examples used for inference: {len(dataset)}")
+
     # remove output_dir if exists
-    shutil.rmtree(training_args.output_dir, ignore_errors=True)
+    if training_args is not None:
+        shutil.rmtree(training_args.output_dir, ignore_errors=True)
 
     # Set seed for reproducibility
     import random
@@ -175,15 +249,15 @@ if __name__ == "__main__":
     print(f"Loaded base model path: {model_args.model_name_or_path}")
 
     # Set quantization config to match training
-    if USE_QUANTIZATION:
-        patch_linear_forward_with_switchable_quantization(base_model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS)
-        add_bitwise_lora_adapters(base_model, bit_widths=BIT_CHOICES, quant_layers=QUANT_LAYERS)
+    if inference_args.use_quantization:
+        patch_linear_forward_with_switchable_quantization(base_model, bit_widths=bit_choices, quant_layers=quant_layers)
+        add_bitwise_lora_adapters(base_model, bit_widths=bit_choices, quant_layers=quant_layers)
 
         # Dummy forward to create LoRA modules, which are created at run time to fix matrix dim mismatch error
         dummy_input = tokenizer("hello", return_tensors="pt").to(base_model.device)
         _ = base_model(**dummy_input)
 
-        state_dict = torch.load(bitwise_lora_adapter_path, map_location="cpu")
+        state_dict = torch.load(inference_args.bitwise_lora_adapter_path, map_location="cpu")
         base_model.load_state_dict(state_dict)
         base_model.to("cuda")
         set_active_bitwidths(base_model, INF_BIT_CONFIG)
@@ -261,10 +335,10 @@ if __name__ == "__main__":
     ################
 
     # Load sft-trained peft model
-    if USE_BITWISE_LORA:
+    if inference_args.use_bitwise_lora:
         peft_sft = base_model # use base model for bitwise lora
     else:
-        peft_sft = PeftModel.from_pretrained(base_model, adapter_path)  # Load peft model
+        peft_sft = PeftModel.from_pretrained(base_model, inference_args.adapter_path)  # Load peft model
         peft_sft.eval()
 
     # Print created lora
@@ -329,4 +403,35 @@ if __name__ == "__main__":
         })
 
     results = score_squad(predictions, references)
-    save_predictions_to_csv(predictions, references)
+    save_predictions_to_csv(predictions, references, inference_args.output_csv_path)
+    
+    return results
+
+if __name__ == "__main__":
+    # parse script arguments
+    parser = make_parser()
+    script_args, training_args, model_args = parser.parse_args_into_dataclasses()
+    
+    # Parse inference-specific arguments
+    args = parser.parse_args()
+    
+    # Convert string arguments to lists
+    bit_choices = [int(x.strip()) for x in args.bit_choices.split(",")]
+    quant_layers = [int(x.strip()) for x in args.quant_layers.split(",")]
+    
+    # Create inference arguments object
+    inference_args = InferenceArguments(
+        eval_json_path=args.eval_json_path,
+        adapter_path=args.adapter_path,
+        output_csv_path=args.output_csv_path,
+        bitwise_lora_adapter_path=args.bitwise_lora_adapter_path,
+        use_quantization=args.use_quantization,
+        use_bitwise_lora=args.use_bitwise_lora,
+        bit_choices=args.bit_choices,
+        max_inf_size=args.max_inf_size,
+        quant_layers=args.quant_layers,
+        inf_bit_config=args.inf_bit_config
+    )
+    
+    # Run inference
+    main(script_args, training_args, model_args, inference_args)
