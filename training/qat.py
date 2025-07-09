@@ -227,19 +227,25 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
+                # Compute lora and add to base output (if adapters exist)
+                if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
+                    lora = self._lora_adapters[bit_key]
+                    try:
+                        # lora_out = lora(input)
+                        # output += lora_out
+
                         # Print base+lora L2 norms
+                        lora_down = lora[0]
+                        lora_up = lora[1]
+                        z = lora_down(input)
+                        lora_out = lora_up(z)
+                        output += lora_out # vanilla lora
                         print(f"[{self._layer_name}] lora: (input @ down @ up)")
                         print(f"  lora_down: {lora_down.weight.shape}, lora_up: {lora_up.weight.shape}")
                         print(f"  z (after down) shape: {z.shape}")
                         print(f"  lora_out norm: {lora_out.norm().item():.6f} | mean: {lora_out.mean().item():.6f}")
                         print(f"  output (final) norm: {output.norm().item():.6f} | mean: {output.mean().item():.6f}")
 
-                # Compute lora and add to base output (if adapters exist)
-                if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
-                    lora = self._lora_adapters[bit_key]
-                    try:
-                        lora_out = lora(input)
-                        output += lora_out
                         # print(
                         #     f"[{self._layer_name}] bit={bit_key} | base: {output.norm():.4f} | lora: {lora_out.norm():.4f}")
                     except RuntimeError as e:
