@@ -223,7 +223,8 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
                         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
                         nn.init.kaiming_uniform_(lora_down.weight, a=math.sqrt(5)) # 7/7: lora init kick start
-                        nn.init.zeros_(lora_up.weight) # 7/7: lora init kick start
+                        # nn.init.zeros_(lora_up.weight) # 7/7: lora init kick start
+                        nn.init.kaiming_uniform_(lora_up.weight, a=math.sqrt(5)) # 7/9: non-zero init
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
