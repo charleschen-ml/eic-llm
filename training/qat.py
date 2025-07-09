@@ -234,14 +234,15 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                             lora_down = lora[0]
                             lora_up = lora[1]
                             print("📡 Logging LoRA stats to wandb...")
-                            wandb.log({
-                                "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
-                                "lora/transformer.h.11.mlp.c_fc/lora_weight_norm": lora_up.weight.norm().item(),
-                                "lora/transformer.h.11.mlp.c_fc/lora_grad_norm": (
-                                    lora_up.weight.grad.norm().item()
-                                    if lora_up.weight.grad is not None else 0.0
-                                ),
-                            })
+                            if wandb.run is not None:
+                                wandb.log({
+                                    "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
+                                    "lora/transformer.h.11.mlp.c_fc/lora_weight_norm": lora_up.weight.norm().item(),
+                                    "lora/transformer.h.11.mlp.c_fc/lora_grad_norm": (
+                                        lora_up.weight.grad.norm().item()
+                                        if lora_up.weight.grad is not None else 0.0
+                                    ),
+                                })
 
                     except RuntimeError as e:
                         print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
