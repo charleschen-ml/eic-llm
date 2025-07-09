@@ -227,7 +227,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                     try:
                         lora_out = lora(input)
                         output = output + lora_out # vanilla lora
-
+                        print("jesus christ")
                         # ✅ Monitor LoRA learning for a specific layer
                         if self._layer_name == "transformer.h.11.mlp.c_fc":
                             lora_down = lora[0]
