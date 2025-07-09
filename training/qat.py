@@ -235,13 +235,13 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         # output += lora_out
 
                         # Print base+lora L2 norms
+                        print(f"[{self._layer_name}] lora: (input @ down @ up)")
                         lora_down = lora[0]
                         lora_up = lora[1]
                         z = lora_down(input)
                         lora_out = lora_up(z)
                         print(f"  output (base) norm: {output.norm().item():.6f} | mean: {output.mean().item():.6f}")
-                        output += lora_out # vanilla lora
-                        print(f"[{self._layer_name}] lora: (input @ down @ up)")
+                        output = output + lora_out # vanilla lora
                         # print(f"  lora_down: {lora_down.weight.shape}, lora_up: {lora_up.weight.shape}")
                         # print(f"  z (after down) shape: {z.shape}")
                         print(f"  lora_out norm: {lora_out.norm().item():.6f} | mean: {lora_out.mean().item():.6f}")
