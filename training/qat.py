@@ -239,7 +239,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         output = output + lora_out # vanilla lora
                         print(f"lora_out norm: {lora_out.norm().item():.6f}")
                         print(f"output (final) norm: {output.norm().item():.6f}")
-                        print(f"{lora_out.norm().item()/output.norm().item():.2f}% lora/output(final)")
+                        print(f"{lora_out.norm().item()/output.norm().item()*100:.2f}% lora/output(final)")
 
                         # print(
                         #     f"[{self._layer_name}] bit={bit_key} | base: {output.norm():.4f} | lora: {lora_out.norm():.4f}")
