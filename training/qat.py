@@ -318,6 +318,7 @@ def sft_preprocess(example, tokenizer):
 # 2. Log grad norms to compare update strengths of WTE vs Lora
 class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
     def training_step(self, model, inputs, num_steps_in_batch):
+        import wandb # needs to be here unfortunately
         model.train()
         inputs = self._prepare_inputs(inputs)
         loss = self.compute_loss(model, inputs)
@@ -331,7 +332,13 @@ class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
             lora_norms = []
             for name, param in model.named_parameters():
                 if "lora" in name and param.grad is not None:
-                    lora_norms.append(param.grad.norm().item())
+                    lora_norm = param.grad.norm().item()
+                    lora_norms.append(lora_norm)
+
+                    # ✅ Log individual grad norms to wandb
+                    wandb.log({
+                        f"lora/{name}/grad_norm": lora_norm
+                    })
             avg_lora_norm = sum(lora_norms) / len(lora_norms) if lora_norms else 0.0
             print(f"🧠 Grad Norms | wte: {wte_norm:.4f} | avg lora: {avg_lora_norm:.4f}")
         except Exception as e:
