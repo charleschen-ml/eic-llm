@@ -188,6 +188,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
 
             # Custom forward (replaces original forward)
             def forward_with_quant_and_lora(self, input):
+                import wandb
                 # Use original forward if bit not active
                 if getattr(self, "_active_bit", None) is None:
                     return self._original_forward(input)
