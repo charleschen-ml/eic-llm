@@ -70,7 +70,8 @@ class InferenceArguments:
                  bit_choices="32",
                  max_inf_size=100,
                  quant_layers="6,11",
-                 inf_bit_config={f"transformer.h.{i}": 32 for i in range(12)}):
+                #  inf_bit_config={f"transformer.h.{i}": 32 for i in range(12)},
+                 inf_bit_config={}):
         self.eval_json_path = eval_json_path
         self.adapter_path = adapter_path
         self.output_csv_path = output_csv_path
