@@ -184,16 +184,6 @@ def main(script_args, training_args, model_args, inference_args):
     else:
         quant_layers = inference_args.quant_layers
     
-    # # Parse inference bit configuration
-    # if isinstance(inference_args.inf_bit_config, str):
-    #     try:
-    #         INF_BIT_CONFIG = json.loads(inference_args.inf_bit_config)
-    #     except json.JSONDecodeError:
-    #         print(f"Warning: Invalid JSON for inf_bit_config: {inference_args.inf_bit_config}")
-    #         print("Using default: 32 bits for all layers")
-    #         INF_BIT_CONFIG = {f"transformer.h.{i}": 32 for i in range(12)}
-    # else:
-    #     INF_BIT_CONFIG = inference_args.inf_bit_config
     
     # Load validation examples from JSON
     with open(inference_args.eval_json_path, "r") as f:
