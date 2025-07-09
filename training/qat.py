@@ -49,6 +49,9 @@ class QATArguments:
         self.cyclic_repeat_per_bit = cyclic_repeat_per_bit
         self.adapter_path = adapter_path or "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
     
+# Settings
+r = 128  # LoRA rank
+alpha = 256 # LoRA alpha
 
 def get_cyclic_bitwidth(step, bit_choices, repeat_per_bit=1):
     """
@@ -207,8 +210,6 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 # Lazy init LoRA adapters at runtime
                 if not hasattr(self, "_lora_adapters") or not self._lora_adapters: # if lora doesn't exist yet
                     self._lora_adapters = nn.ModuleDict()
-                    r = 128  # LoRA rank
-                    lora_alpha = 256 # LoRA alpha
                     in_features = input.shape[-1]
                     out_features = output.shape[-1]
                     for b in self._bit_choices:
@@ -228,7 +229,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                     lora = self._lora_adapters[bit_key]
                     try:
                         lora_out = lora(input)
-                        output = output + lora_alpha / r * lora_out # vanilla lora
+                        output = output + alpha / r * lora_out # vanilla lora
                         # ✅ Monitor LoRA learning for a specific layer
                         if self._layer_name == "transformer.h.11.mlp.c_fc":
                             lora_down = lora[0]
