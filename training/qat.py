@@ -234,7 +234,6 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         if self._layer_name == "transformer.h.11.mlp.c_fc":
                             lora_down = lora[0]
                             lora_up = lora[1]
-                            print("📡 Logging LoRA stats to wandb...")
                             if wandb.run is not None:
                                 wandb.log({
                                     "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
@@ -319,8 +318,6 @@ class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
         model.train()
         inputs = self._prepare_inputs(inputs)
         loss = self.compute_loss(model, inputs)
-        print(f"🔥 compute_loss: loss.requires_grad = {loss.requires_grad}")
-        print(f"🔥 compute_loss: loss.grad_fn = {loss.grad_fn}")
         loss.backward()
 
         # 🔍 Grad norm logging
