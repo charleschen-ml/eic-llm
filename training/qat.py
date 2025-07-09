@@ -228,7 +228,6 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                     try:
                         lora_out = lora(input)
                         output = output + lora_out # vanilla lora
-                        # print(f"jesus christ {self._layer_name}")
                         # ✅ Monitor LoRA learning for a specific layer
                         if self._layer_name == "transformer.h.11.mlp.c_fc":
                             lora_down = lora[0]
@@ -238,10 +237,6 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                                 wandb.log({
                                     "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
                                     "lora/transformer.h.11.mlp.c_fc/lora_weight_norm": lora_up.weight.norm().item(),
-                                    "lora/transformer.h.11.mlp.c_fc/lora_grad_norm": (
-                                        lora_up.weight.grad.norm().item()
-                                        if lora_up.weight.grad is not None else 0.0
-                                    ),
                                 })
 
                     except RuntimeError as e:
