@@ -205,9 +205,9 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
 
                 # Print base L2 norms
                 print(f"[{self._layer_name}] base: (input @ weight.T + bias)")
-                print(f"  input shape: {input.shape}")
-                print(f"  weight.T shape: {weight.T.shape}")
-                print(f"  bias shape: {bias.shape if bias is not None else 'None'}")
+                # print(f"  input shape: {input.shape}")
+                # print(f"  weight.T shape: {weight.T.shape}")
+                # print(f"  bias shape: {bias.shape if bias is not None else 'None'}")
                 print(f"  base_out norm: {output.norm().item():.6f} | mean: {output.mean().item():.6f}")
 
                 # Lazy init LoRA adapters at runtime
@@ -241,9 +241,9 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         lora_out = lora_up(z)
                         output += lora_out # vanilla lora
                         print(f"[{self._layer_name}] lora: (input @ down @ up)")
-                        print(f"  lora_down: {lora_down.weight.shape}, lora_up: {lora_up.weight.shape}")
-                        print(f"  z (after down) shape: {z.shape}")
-                        print(f"  lora_out norm: {lora_out.norm().item():.6f} | mean: {lora_out.mean().item():.6f}")
+                        # print(f"  lora_down: {lora_down.weight.shape}, lora_up: {lora_up.weight.shape}")
+                        # print(f"  z (after down) shape: {z.shape}")
+                        # print(f"  lora_out norm: {lora_out.norm().item():.6f} | mean: {lora_out.mean().item():.6f}")
                         print(f"  output (final) norm: {output.norm().item():.6f} | mean: {output.mean().item():.6f}")
 
                         # print(
