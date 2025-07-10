@@ -489,6 +489,7 @@ def main(script_args, training_args, model_args, qat_args):
     print("lm_head weight requires_grad:", model.lm_head.weight.requires_grad)
     print("lm_head in optimizer?",
           any(id(p) == id(model.lm_head.weight) for g in trainer.optimizer.param_groups for p in g["params"]))
+    print("lm_head and wte shared?", model.lm_head.weight is model.transformer.wte.weight)
 
     # Print trainable parameters before training
     for name, param in model.named_parameters():
