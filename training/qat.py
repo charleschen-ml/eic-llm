@@ -335,7 +335,7 @@ class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
                         f"lora/{name}/grad_norm": lora_norm
                     })
             avg_lora_norm = sum(lora_norms) / len(lora_norms) if lora_norms else 0.0
-            print(f"🧠 Grad Norms | wte: {wte_norm:.4f} | avg lora: {avg_lora_norm:.4f}")
+            # print(f"🧠 Grad Norms | wte: {wte_norm:.4f} | avg lora: {avg_lora_norm:.4f}")
         except Exception as e:
             print(f"[Grad Logging] Error: {e}")
 
