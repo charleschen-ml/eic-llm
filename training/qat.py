@@ -495,6 +495,9 @@ def main(script_args, training_args, model_args, qat_args):
     for name, param in model.named_parameters():
         if param.requires_grad:
             print(f"[Trainable] {name}, shape: {param.shape}")
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            print(f"[Frozen] {name}, shape: {param.shape}")
 
     # Print created lora
     print("\n🔍 Created LoRA Adapters:")
