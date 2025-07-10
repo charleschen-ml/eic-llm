@@ -148,6 +148,7 @@ def set_active_bitwidths(model, bit_config_dict):
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             # Skip c_attn layers
             if "c_attn" in name:
+                print(f"c_attn skipped")
                 continue
 
             # Default all layers to inactive
@@ -157,7 +158,7 @@ def set_active_bitwidths(model, bit_config_dict):
             for prefix, bit in bit_config_dict.items():
                 if name.startswith(prefix):
                     module._active_bit = bit  # ✅ only activate if explicitly configured
-                    # print(f"[set_active] set {name} to {bit} bits")
+                    print(f"[set_active] set {name} to {bit} bits")
 
 # 1. Configures requires_grad for all layers
 # 2. Define custom forward, which creates lora at runtime
