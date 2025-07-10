@@ -213,9 +213,9 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                     in_features = input.shape[-1]
                     out_features = output.shape[-1]
                     for b in self._bit_choices:
-                        if self.weight.shape[1] == self.weight.shape[0] * 3: # skip c_attn
-                            # print(f"[bitwise_lora] Skip {self._layer_name} due to shape mismatch risk.")
-                            continue
+                        # if self.weight.shape[1] == self.weight.shape[0] * 3: # skip c_attn
+                        #     # print(f"[bitwise_lora] Skip {self._layer_name} due to shape mismatch risk.")
+                        #     continue
                         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
                         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
                         nn.init.kaiming_uniform_(lora_down.weight, a=math.sqrt(5)) # 7/7: lora init kick start
