@@ -405,8 +405,12 @@ def main(script_args, training_args, model_args, qat_args):
     # Set trainable layers
     for param in model.parameters(): # Freeze all layers by default
         param.requires_grad = False
-    model.transformer.wte.weight.requires_grad = True # wte = embedding layer
-    model.lm_head.weight.requires_grad = True # lm_head = language model head
+    model.transformer.wte.weight.requires_grad = True # embedding
+    model.lm_head.weight.requires_grad = True # language model head
+    for name, param in model.named_parameters(): # layer norm
+        if "ln_" in name:
+            param.requires_grad = True
+    # model.transformer.wpe.weight.requires_grad = True  # position
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
