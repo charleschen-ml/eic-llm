@@ -50,8 +50,8 @@ class QATArguments:
         self.adapter_path = adapter_path or "/content/drive/MyDrive/Colab_Notebooks/nn/gpt2-qat/full_qat_model.pt"
     
 # Settings
-r = 128  # LoRA rank
-alpha = 256 # LoRA alpha
+r = 16  # LoRA rank
+alpha = 32 # LoRA alpha
 
 def get_cyclic_bitwidth(step, bit_choices, repeat_per_bit=1):
     """
@@ -403,13 +403,13 @@ def main(script_args, training_args, model_args, qat_args):
         add_bitwise_lora_adapters(model, bit_widths = qat_args.bit_choices, quant_layers = qat_args.quant_layers)
 
     # Set trainable layers
-    # for param in model.parameters(): # Freeze all layers by default
-    #     param.requires_grad = False
+    for param in model.parameters(): # Freeze all layers by default
+        param.requires_grad = False
     model.transformer.wte.weight.requires_grad = True # embedding
     model.lm_head.weight.requires_grad = True # language model head
-    for name, param in model.named_parameters(): # layer norm
-        if "ln_" in name:
-            param.requires_grad = True
+    # for name, param in model.named_parameters(): # layer norm
+    #     if "ln_" in name:
+    #         param.requires_grad = True
     # model.transformer.wpe.weight.requires_grad = True  # position
 
     # Create tokenizer
