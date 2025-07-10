@@ -401,24 +401,12 @@ def main(script_args, training_args, model_args, qat_args):
         patch_linear_forward_with_switchable_quantization(model, bit_widths = qat_args.bit_choices, quant_layers = qat_args.quant_layers)
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         add_bitwise_lora_adapters(model, bit_widths = qat_args.bit_choices, quant_layers = qat_args.quant_layers)
-    
-    # Debug why lm_head is not trainable
-    print("lm_head type:", type(model.lm_head))
-    print("lm_head weight requires_grad:", model.lm_head.weight.requires_grad)
-    print("lm_head in optimizer?",
-          any(id(p) == id(model.lm_head.weight) for g in trainer.optimizer.param_groups for p in g["params"]))
 
     # Set trainable layers
     for param in model.parameters(): # Freeze all layers by default
         param.requires_grad = False
     model.transformer.wte.weight.requires_grad = True # wte = embedding layer
     model.lm_head.weight.requires_grad = True # lm_head = language model head
-
-    # Debug why lm_head is not trainable
-    print("lm_head type:", type(model.lm_head))
-    print("lm_head weight requires_grad:", model.lm_head.weight.requires_grad)
-    print("lm_head in optimizer?",
-          any(id(p) == id(model.lm_head.weight) for g in trainer.optimizer.param_groups for p in g["params"]))
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -494,6 +482,12 @@ def main(script_args, training_args, model_args, qat_args):
         # peft_config=get_peft_config(model_args), # shouldn't be used but removing just to be sure
         callbacks = callbacks
     )
+
+    # Debug why lm_head is not trainable
+    print("lm_head type:", type(model.lm_head))
+    print("lm_head weight requires_grad:", model.lm_head.weight.requires_grad)
+    print("lm_head in optimizer?",
+          any(id(p) == id(model.lm_head.weight) for g in trainer.optimizer.param_groups for p in g["params"]))
 
     # Print trainable parameters before training
     for name, param in model.named_parameters():
