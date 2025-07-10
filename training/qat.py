@@ -170,7 +170,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
     # Workaround: Set requires_grad = True for WTE layer required for gradient flow
     # Weight updates to this layer is later disabled to train only lora layers
     model.transformer.wte.weight.requires_grad = True  # required to avoid loss.requires_grad = False
-    # model.lm_head.weight.requires_grad = True # optional
+    model.lm_head.weight.requires_grad = True # optional
 
     for name, module in model.named_modules():
         # Unfreeze LoRA adapter weights listed in QUANT_LAYERS
