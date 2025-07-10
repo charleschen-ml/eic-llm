@@ -170,6 +170,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
     # Workaround: Set requires_grad = True for WTE layer required for gradient flow
     # Weight updates to this layer is later disabled to train only lora layers
     model.transformer.wte.weight.requires_grad = True  # required to avoid loss.requires_grad = False
+    # model.lm_head.weight.requires_grad = True # optional
 
     for name, module in model.named_modules():
         # Unfreeze LoRA adapter weights listed in QUANT_LAYERS
@@ -233,7 +234,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         output = output + alpha / r * lora_out # vanilla lora
                         # ✅ Monitor LoRA learning for a specific layer
                         if self._layer_name == "transformer.h.11.mlp.c_fc":
-                            lora_down = lora[0]
+                            lora[0]
                             lora_up = lora[1]
                             if wandb.run is not None:
                                 wandb.log({
@@ -466,8 +467,8 @@ def main(script_args, training_args, model_args, qat_args):
     ################
     # Training
     ################
-    # trainer = SFTTrainer(
-    trainer=SFTTrainerWithGradLoggingNoWTE( # 7/6: allow print grad norm AND prevent wte grad updates
+    trainer = SFTTrainer(
+    # trainer=SFTTrainerWithGradLoggingNoWTE( # 7/6: allow print grad norm AND prevent wte grad updates
         model=model,
         args=training_args,
         train_dataset=train_dataset, # dataset[script_args.dataset_train_split],
