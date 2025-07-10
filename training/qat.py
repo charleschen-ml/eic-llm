@@ -163,14 +163,14 @@ def set_active_bitwidths(model, bit_config_dict):
 # 1. Configures requires_grad for all layers
 # 2. Define custom forward, which creates lora at runtime
 def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
-    # Freeze all layers by default
-    for param in model.parameters():
-        param.requires_grad = False
-
-    # Workaround: Set requires_grad = True for WTE layer required for gradient flow
-    # Weight updates to this layer is later disabled to train only lora layers
-    model.transformer.wte.weight.requires_grad = True  # required to avoid loss.requires_grad = False
-    model.lm_head.weight.requires_grad = True # optional
+    # # Freeze all layers by default
+    # for param in model.parameters():
+    #     param.requires_grad = False
+    #
+    # # Workaround: Set requires_grad = True for WTE layer required for gradient flow
+    # # Weight updates to this layer is later disabled to train only lora layers
+    # model.transformer.wte.weight.requires_grad = True  # required to avoid loss.requires_grad = False
+    # model.lm_head.weight.requires_grad = True # optional
 
     for name, module in model.named_modules():
         # Unfreeze LoRA adapter weights listed in QUANT_LAYERS
@@ -402,6 +402,11 @@ def main(script_args, training_args, model_args, qat_args):
         print("After patch:", model.transformer.h[0].mlp.c_fc.forward.__code__)
         add_bitwise_lora_adapters(model, bit_widths = qat_args.bit_choices, quant_layers = qat_args.quant_layers)
     
+    # Set trainable layers
+    for param in model.parameters(): # Freeze all layers by default
+        param.requires_grad = False
+    model.transformer.wte.weight.requires_grad = True # wte = embedding layer
+    model.lm_head.weight.requires_grad = True # lm_head = language model head
 
     # Create tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
