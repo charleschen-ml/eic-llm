@@ -147,9 +147,9 @@ def set_active_bitwidths(model, bit_config_dict):
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             # Skip c_attn layers
-            if "c_attn" in name:
-                print(f"c_attn skipped")
-                continue
+            # if "c_attn" in name:
+            #     print(f"c_attn skipped")
+            #     continue
 
             # Default all layers to inactive
             module._active_bit = None
