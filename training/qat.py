@@ -484,6 +484,7 @@ def main(script_args, training_args, model_args, qat_args):
     )
 
     # Debug why lm_head is not trainable
+    trainer.create_optimizer()
     print("lm_head type:", type(model.lm_head))
     print("lm_head weight requires_grad:", model.lm_head.weight.requires_grad)
     print("lm_head in optimizer?",
