@@ -207,6 +207,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 # Debug
                 output_original = self._original_forward(input)
                 output_custom = output
+                print(f"\nlayer {module._layer_name}")
                 print("➡️ Output original (first 1–2 values):", output_original.view(-1)[:2])
                 print("➡️ Output custom   (first 1–2 values):", output_custom.view(-1)[:2])
                 diff = (output_original - output_custom).abs().mean().item()
