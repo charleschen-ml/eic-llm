@@ -146,11 +146,6 @@ def set_active_bitwidths(model, bit_config_dict):
     print(f"\n[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            # Skip c_attn layers
-            # if "c_attn" in name:
-            #     print(f"c_attn skipped")
-            #     continue
-
             # Default all layers to inactive
             module._active_bit = None
 
@@ -215,9 +210,6 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                     in_features = input.shape[-1]
                     out_features = output.shape[-1]
                     for b in self._bit_choices:
-                        # if self.weight.shape[1] == self.weight.shape[0] * 3: # skip c_attn
-                        #     # print(f"[bitwise_lora] Skip {self._layer_name} due to shape mismatch risk.")
-                        #     continue
                         lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
                         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
                         nn.init.kaiming_uniform_(lora_down.weight, a=math.sqrt(5)) # 7/7: lora init kick start
@@ -314,56 +306,56 @@ def sft_preprocess(example, tokenizer):
 # This class serves 2 purposes:
 # 1. Workaround to disable gradient updates to the WTE layer while keeping gradient_required = True
 # 2. Log grad norms to compare update strengths of WTE vs Lora
-class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
-    def training_step(self, model, inputs, num_steps_in_batch):
-        import wandb # needs to be here unfortunately
-        model.train()
-        inputs = self._prepare_inputs(inputs)
-        loss = self.compute_loss(model, inputs)
-        loss.backward()
-
-        # 🔍 Grad norm logging
-        try:
-            wte_norm = model.transformer.wte.weight.grad.norm().item()
-            lora_norms = []
-            for name, param in model.named_parameters():
-                if "lora" in name and param.grad is not None:
-                    lora_norm = param.grad.norm().item()
-                    lora_norms.append(lora_norm)
-
-                    # ✅ Log individual grad norms to wandb
-                    wandb.log({
-                        f"lora/{name}/grad_norm": lora_norm
-                    })
-            avg_lora_norm = sum(lora_norms) / len(lora_norms) if lora_norms else 0.0
-            # print(f"🧠 Grad Norms | wte: {wte_norm:.4f} | avg lora: {avg_lora_norm:.4f}")
-        except Exception as e:
-            print(f"[Grad Logging] Error: {e}")
-
-        return loss.detach()
-
-    def create_optimizer(self):
-        if self.optimizer is not None:
-            return self.optimizer
-
-        # Filter out 'wte' from optimizer param groups
-        decay_params = []
-        no_decay_params = []
-        for name, param in self.model.named_parameters():
-            if not param.requires_grad or "wte" in name:
-                continue
-            if any(nd in name for nd in ["bias", "LayerNorm.weight"]):
-                no_decay_params.append(param)
-            else:
-                decay_params.append(param)
-
-        grouped_params = [
-            {"params": decay_params, "weight_decay": self.args.weight_decay},
-            {"params": no_decay_params, "weight_decay": 0.0},
-        ]
-
-        self.optimizer = AdamW(grouped_params, lr=self.args.learning_rate)
-        return self.optimizer
+# class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
+#     def training_step(self, model, inputs, num_steps_in_batch):
+#         import wandb # needs to be here unfortunately
+#         model.train()
+#         inputs = self._prepare_inputs(inputs)
+#         loss = self.compute_loss(model, inputs)
+#         loss.backward()
+#
+#         # 🔍 Grad norm logging
+#         try:
+#             wte_norm = model.transformer.wte.weight.grad.norm().item()
+#             lora_norms = []
+#             for name, param in model.named_parameters():
+#                 if "lora" in name and param.grad is not None:
+#                     lora_norm = param.grad.norm().item()
+#                     lora_norms.append(lora_norm)
+#
+#                     # ✅ Log individual grad norms to wandb
+#                     wandb.log({
+#                         f"lora/{name}/grad_norm": lora_norm
+#                     })
+#             avg_lora_norm = sum(lora_norms) / len(lora_norms) if lora_norms else 0.0
+#             # print(f"🧠 Grad Norms | wte: {wte_norm:.4f} | avg lora: {avg_lora_norm:.4f}")
+#         except Exception as e:
+#             print(f"[Grad Logging] Error: {e}")
+#
+#         return loss.detach()
+#
+#     def create_optimizer(self):
+#         if self.optimizer is not None:
+#             return self.optimizer
+#
+#         # Filter out 'wte' from optimizer param groups
+#         decay_params = []
+#         no_decay_params = []
+#         for name, param in self.model.named_parameters():
+#             if not param.requires_grad or "wte" in name:
+#                 continue
+#             if any(nd in name for nd in ["bias", "LayerNorm.weight"]):
+#                 no_decay_params.append(param)
+#             else:
+#                 decay_params.append(param)
+#
+#         grouped_params = [
+#             {"params": decay_params, "weight_decay": self.args.weight_decay},
+#             {"params": no_decay_params, "weight_decay": 0.0},
+#         ]
+#
+#         self.optimizer = AdamW(grouped_params, lr=self.args.learning_rate)
+#         return self.optimizer
 
 def main(script_args, training_args, model_args, qat_args):
     """
