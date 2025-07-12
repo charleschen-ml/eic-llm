@@ -416,7 +416,23 @@ def main(script_args, training_args, model_args, qat_args):
     }
     set_active_bitwidths(model, temp_bit_config_dict)
 
-    # Create LoRA modules + Callback
+    # Create lora (lazy init)
+    if True: # debug: always create lora
+    # if qat_args.use_bitwise_lora:
+        # Dummy pass to create lora
+        model.eval()
+        print("Before patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
+        with torch.no_grad():
+            dummy_input = tokenizer("hello world", return_tensors="pt")["input_ids"].to(model.device)
+            model(dummy_input)
+        print("After patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
+
+        # Verify lora created
+        for name, module in model.named_modules():
+            if hasattr(module, "_lora_adapters"):
+                print(f"{name}: {list(module._lora_adapters.keys())}")
+
+    # Create Callback
     if qat_args.use_bitwise_lora:
         callbacks = [BitwidthSchedulingCallback(
             model, 
@@ -431,19 +447,6 @@ def main(script_args, training_args, model_args, qat_args):
             print(f"[Warning] Unknown bitwidth_schedule: {qat_args.bitwidth_schedule}. Defaulting to 'static'")
             qat_args.bitwidth_schedule = "static"
             print(f"[Config] Using {qat_args.bitwidth_schedule} bit-width assignment from: {qat_args.bit_choices}")
-        
-        # Dummy pass to create lora
-        model.eval()
-        print("Before patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
-        with torch.no_grad():
-            dummy_input = tokenizer("hello world", return_tensors="pt")["input_ids"].to(model.device)
-            model(dummy_input)
-        print("After patch:", model.transformer.h[11].mlp.c_fc.forward.__code__)
-        
-        # Verify lora created
-        for name, module in model.named_modules(): 
-            if hasattr(module, "_lora_adapters"):
-                print(f"{name}: {list(module._lora_adapters.keys())}")
     else:
         callbacks = []
 
