@@ -99,7 +99,7 @@ def get_static_bitwidth(step, bit_choices):
 #     tensor_dequant = tensor_quant * scale
 #     return tensor_dequant.to(device) # move tensor to gpu
 
-def quantize_tensor_qat(tensor, num_bits=4):
+def quantize_tensor(tensor, num_bits=4):
     device = tensor.device
     # Detach scale to avoid backprop through it
     max_val = tensor.detach().abs().max()
@@ -212,7 +212,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 # Compute base output (no lora, using base, quantized weights)
                 # weight = self._quantized_weights[self._active_bit] # load quantized weights
                 # weight = self.weight # load base weights
-                weight = quantize_tensor_qat(self.weight, num_bits=self._active_bit)
+                weight = quantize_tensor(self.weight, num_bits=self._active_bit)
                 weight = weight.T
                 # weight_base = weight_base.T
                 bias = self.bias # load bias
