@@ -197,8 +197,8 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 input = input[0] if isinstance(input, tuple) else input # to remove
 
                 # Compute base output (no lora, using base, quantized weights)
-                weight = self._quantized_weights[self._active_bit] # load quantized weights
-                # weight_base = self.weight # load base weights
+                # weight = self._quantized_weights[self._active_bit] # load quantized weights
+                weight = self.weight # load base weights
                 weight = weight.T
                 # weight_base = weight_base.T
                 bias = self.bias # load bias
