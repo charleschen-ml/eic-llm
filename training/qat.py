@@ -219,28 +219,27 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
                 # Compute lora and add to base output (if adapters exist)
-                if qat_args.use_bitwise_lora: # skip entire lora calc (during debugging this flag is set to False)
-                    if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
-                        lora = self._lora_adapters[bit_key]
-                        try:
-                            lora_out = lora(input)
-                            output = output + alpha / r * lora_out # vanilla lora
-                            # ✅ Monitor LoRA learning for a specific layer
-                            if self._layer_name == "transformer.h.11.mlp.c_fc":
-                                lora[0]
-                                lora_up = lora[1]
-                                if wandb.run is not None:
-                                    wandb.log({
-                                        "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
-                                        "lora/transformer.h.11.mlp.c_fc/lora_weight_norm": lora_up.weight.norm().item(),
-                                    })
-
-                        except RuntimeError as e:
-                            print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
-                            # pass
-                    else:
-                        # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
-                        pass
+                # if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
+                #     lora = self._lora_adapters[bit_key]
+                #     try:
+                #         lora_out = lora(input)
+                #         output = output + alpha / r * lora_out # vanilla lora
+                #         # ✅ Monitor LoRA learning for a specific layer
+                #         if self._layer_name == "transformer.h.11.mlp.c_fc":
+                #             lora[0]
+                #             lora_up = lora[1]
+                #             if wandb.run is not None:
+                #                 wandb.log({
+                #                     "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
+                #                     "lora/transformer.h.11.mlp.c_fc/lora_weight_norm": lora_up.weight.norm().item(),
+                #                 })
+                #
+                #     except RuntimeError as e:
+                #         print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
+                #         # pass
+                # else:
+                #     # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
+                #     pass
 
                 return output
 
