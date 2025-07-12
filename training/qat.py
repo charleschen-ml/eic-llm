@@ -410,7 +410,10 @@ def main(script_args, training_args, model_args, qat_args):
     )
     eos = tokenizer.eos_token if tokenizer is not None else ""
     
-    # Dummy forward to create LoRA modules
+    # Debug: Set all active to 0
+    set_active_bitwidths(model, {})
+
+    # Create LoRA modules + Callback
     if qat_args.use_bitwise_lora:
         callbacks = [BitwidthSchedulingCallback(
             model, 
@@ -515,12 +518,12 @@ def main(script_args, training_args, model_args, qat_args):
     trainer.train()
 
     # 🔍 Confirm wte is excluded from optimizer
-    wte_ref = model.transformer.wte.weight
-    wte_found = any(p is wte_ref for g in trainer.optimizer.param_groups for p in g["params"])
-    if wte_found:
-        print("🚨 wte IS in optimizer! (unexpected)")
-    else:
-        print("✅ wte is NOT in optimizer — LoRA-only training confirmed.")
+    # wte_ref = model.transformer.wte.weight
+    # wte_found = any(p is wte_ref for g in trainer.optimizer.param_groups for p in g["params"])
+    # if wte_found:
+    #     print("🚨 wte IS in optimizer! (unexpected)")
+    # else:
+    #     print("✅ wte is NOT in optimizer — LoRA-only training confirmed.")
 
     # Save and push to hub
     trainer.save_model(training_args.output_dir)
