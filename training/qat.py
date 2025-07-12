@@ -199,8 +199,6 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 # Compute base output (no lora, using base, quantized weights)
                 # weight = self._quantized_weights[self._active_bit] # load quantized weights
                 weight = self.weight # load base weights
-                # if weight.shape[1] != input.shape[-1]: # transpose matrix for special layers
-                #     weight = weight.T
                 weight = weight.T
                 bias = self.bias # load bias
                 output = F.linear(input, weight, bias) # compute output = input * weight.T + bias
@@ -228,7 +226,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                USE_LORA = False
+                USE_LORA = True
                 if USE_LORA:
                     # Compute lora and add to base output (if adapters exist)
                     if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
