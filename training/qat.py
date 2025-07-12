@@ -204,44 +204,46 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 bias = self.bias # load bias
                 output = F.linear(input, weight, bias) # compute output = input * weight.T + bias
 
-                # Lazy init LoRA adapters at runtime
-                if not hasattr(self, "_lora_adapters") or not self._lora_adapters: # if lora doesn't exist yet
-                    self._lora_adapters = nn.ModuleDict()
-                    in_features = input.shape[-1]
-                    out_features = output.shape[-1]
-                    for b in self._bit_choices:
-                        lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
-                        lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
-                        nn.init.kaiming_uniform_(lora_down.weight, a=math.sqrt(5)) # 7/7: lora init kick start
-                        nn.init.zeros_(lora_up.weight) # 7/7: lora init kick start
-                        # nn.init.kaiming_uniform_(lora_up.weight, a=math.sqrt(5)) # 7/9: non-zero init
-                        self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
-                        # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
+                USE_LORA = False
+                if USE_LORA:
+                    # Lazy init LoRA adapters at runtime
+                    if not hasattr(self, "_lora_adapters") or not self._lora_adapters: # if lora doesn't exist yet
+                        self._lora_adapters = nn.ModuleDict()
+                        in_features = input.shape[-1]
+                        out_features = output.shape[-1]
+                        for b in self._bit_choices:
+                            lora_down = nn.Linear(in_features, r, bias=False).to(input.device)
+                            lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
+                            nn.init.kaiming_uniform_(lora_down.weight, a=math.sqrt(5)) # 7/7: lora init kick start
+                            nn.init.zeros_(lora_up.weight) # 7/7: lora init kick start
+                            # nn.init.kaiming_uniform_(lora_up.weight, a=math.sqrt(5)) # 7/9: non-zero init
+                            self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
+                            # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                # Compute lora and add to base output (if adapters exist)
-                # if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
-                #     lora = self._lora_adapters[bit_key]
-                #     try:
-                #         lora_out = lora(input)
-                #         output = output + alpha / r * lora_out # vanilla lora
-                #         # ✅ Monitor LoRA learning for a specific layer
-                #         if self._layer_name == "transformer.h.11.mlp.c_fc":
-                #             lora[0]
-                #             lora_up = lora[1]
-                #             if wandb.run is not None:
-                #                 wandb.log({
-                #                     "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
-                #                     "lora/transformer.h.11.mlp.c_fc/lora_weight_norm": lora_up.weight.norm().item(),
-                #                 })
-                #
-                #     except RuntimeError as e:
-                #         print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
-                #         # pass
-                # else:
-                #     # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
-                #     pass
+                    # Compute lora and add to base output (if adapters exist)
+                    if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
+                        lora = self._lora_adapters[bit_key]
+                        try:
+                            lora_out = lora(input)
+                            output = output + alpha / r * lora_out # vanilla lora
+                            # ✅ Monitor LoRA learning for a specific layer
+                            if self._layer_name == "transformer.h.11.mlp.c_fc":
+                                lora[0]
+                                lora_up = lora[1]
+                                if wandb.run is not None:
+                                    wandb.log({
+                                        "lora/transformer.h.11.mlp.c_fc/lora_out_norm": lora_out.norm().item(),
+                                        "lora/transformer.h.11.mlp.c_fc/lora_weight_norm": lora_up.weight.norm().item(),
+                                    })
 
-                return output
+                        except RuntimeError as e:
+                            print(f"[Forward] Skipped {self._layer_name} | Bit: {bit_key} | {e}")
+                            # pass
+                    else:
+                        # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
+                        pass
+
+                    return output
 
             # Bind custom forward
             module.forward = forward_with_quant_and_lora.__get__(module, type(module))
