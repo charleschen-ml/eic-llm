@@ -243,7 +243,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         # print(f"[LoRA] No LoRA adapter for bit {bit_key} in {self._layer_name}")
                         pass
 
-                    return output
+                return output
 
             # Bind custom forward
             module.forward = forward_with_quant_and_lora.__get__(module, type(module))
