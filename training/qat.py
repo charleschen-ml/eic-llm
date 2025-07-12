@@ -410,9 +410,9 @@ def main(script_args, training_args, model_args, qat_args):
     )
     eos = tokenizer.eos_token if tokenizer is not None else ""
     
-    # Debug: Set all active to 0
+    # Debug: Manually set active
     temp_bit_config_dict = {
-        # "transformer.h.0": 32
+        f"transformer.h.{i}": 32 for i in range(12),
     }
     set_active_bitwidths(model, temp_bit_config_dict)
 
