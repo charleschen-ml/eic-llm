@@ -197,8 +197,8 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 input = input[0] if isinstance(input, tuple) else input # to remove
 
                 # Compute base output (no lora, using base, quantized weights)
-                weight = self._quantized_weights[self._active_bit] # load quantized weights
-                # weight = self.weight # load base weights
+                # weight = self._quantized_weights[self._active_bit] # load quantized weights
+                weight = self.weight # load base weights
                 if weight.shape[1] != input.shape[-1]: # transpose matrix for special layers
                     weight = weight.T
                 bias = self.bias # load bias
@@ -412,7 +412,7 @@ def main(script_args, training_args, model_args, qat_args):
     
     # Debug: Set all active to 0
     temp_bit_config_dict = {
-        "transformer.h.0": 32
+        # "transformer.h.0": 32
     }
     set_active_bitwidths(model, temp_bit_config_dict)
 
