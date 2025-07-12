@@ -422,7 +422,7 @@ def main(script_args, training_args, model_args, qat_args):
     
     # Debug: Manually set active
     temp_bit_config_dict = {
-        f"transformer.h.{i}": 32 for i in range(12)
+        f"transformer.h.{i}": 4 for i in range(12)
     }
     set_active_bitwidths(model, temp_bit_config_dict)
 
