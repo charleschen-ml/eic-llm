@@ -89,15 +89,28 @@ def get_static_bitwidth(step, bit_choices):
     return bit_choices[bit_index]
 
 # Symmetric min-max quantization
-def quantize_tensor(tensor, num_bits=4) -> object:
-    device = tensor.device # capture tensor device (gpu)
-    max_val = tensor.abs().max()
+# def quantize_tensor(tensor, num_bits=4) -> object:
+#     device = tensor.device # capture tensor device (gpu)
+#     max_val = tensor.abs().max()
+#     scale = max_val / (2 ** (num_bits - 1) - 1)
+#     tensor_quant = torch.round(tensor / scale).clamp(
+#         min=-(2 ** (num_bits - 1)), max=2 ** (num_bits - 1) - 1
+#     )
+#     tensor_dequant = tensor_quant * scale
+#     return tensor_dequant.to(device) # move tensor to gpu
+
+def quantize_tensor_qat(tensor, num_bits=4):
+    device = tensor.device
+    # Detach scale to avoid backprop through it
+    max_val = tensor.detach().abs().max()
     scale = max_val / (2 ** (num_bits - 1) - 1)
-    tensor_quant = torch.round(tensor / scale).clamp(
+
+    # Fake quantization using STE (straight-through estimator)
+    quant = torch.round(tensor / scale).clamp(
         min=-(2 ** (num_bits - 1)), max=2 ** (num_bits - 1) - 1
     )
-    tensor_dequant = tensor_quant * scale
-    return tensor_dequant.to(device) # move tensor to gpu
+    dequant = quant * scale
+    return dequant.to(device)
 
 def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_layers):
     """
@@ -198,7 +211,8 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
 
                 # Compute base output (no lora, using base, quantized weights)
                 # weight = self._quantized_weights[self._active_bit] # load quantized weights
-                weight = self.weight # load base weights
+                # weight = self.weight # load base weights
+                weight = quantize_tensor_qat(self.weight, num_bits=self._active_bit)
                 weight = weight.T
                 # weight_base = weight_base.T
                 bias = self.bias # load bias
