@@ -226,7 +226,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                USE_LORA = True
+                USE_LORA = False
                 if USE_LORA:
                     # Compute lora and add to base output (if adapters exist)
                     if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
