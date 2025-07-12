@@ -198,19 +198,20 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
 
                 # Compute base output (no lora, using base, quantized weights)
                 weight = self._quantized_weights[self._active_bit] # load quantized weights
-                # weight = self.weight # load base weights
+                # weight_base = self.weight # load base weights
                 weight = weight.T
+                # weight_base = weight_base.T
                 bias = self.bias # load bias
                 output = F.linear(input, weight, bias) # compute output = input * weight.T + bias
 
                 # Debug
-                # output_original = self._original_forward(input)
-                # output_custom = output
-                # print(f"\nlayer {getattr(self, '_layer_name', '(unknown)')}")
-                # print("➡️ Output original (first 1–2 values):", output_original.view(-1)[:2])
-                # print("➡️ Output custom   (first 1–2 values):", output_custom.view(-1)[:2])
-                # diff = (output_original - output_custom).abs().mean().item()
-                # print(f"🧮 Mean absolute diff: {diff:.6f}")
+                output_original = self._original_forward(input)
+                output_custom = output
+                print(f"\nlayer {getattr(self, '_layer_name', '(unknown)')}")
+                print("➡️ Output original (first 1–2 values):", output_original.view(-1)[:2])
+                print("➡️ Output custom   (first 1–2 values):", output_custom.view(-1)[:2])
+                diff = (output_original - output_custom).abs().mean().item()
+                print(f"🧮 Mean absolute diff: {diff:.6f}")
 
                 # Lazy init LoRA adapters at runtime
                 if not hasattr(self, "_lora_adapters") or not self._lora_adapters: # if lora doesn't exist yet
