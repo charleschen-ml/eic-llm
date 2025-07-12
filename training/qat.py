@@ -219,7 +219,7 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
                 # Compute lora and add to base output (if adapters exist)
-                if qat_args.use_bitwise_lora: # skip entire lora calc (during debugging this flag is to False)
+                if qat_args.use_bitwise_lora: # skip entire lora calc (during debugging this flag is set to False)
                     if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
                         lora = self._lora_adapters[bit_key]
                         try:
