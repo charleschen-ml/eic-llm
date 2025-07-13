@@ -247,7 +247,7 @@ def main(script_args, training_args, model_args, inference_args):
         state_dict = torch.load(inference_args.bitwise_lora_adapter_path, map_location="cpu")
         base_model.load_state_dict(state_dict)
         base_model.to("cuda")
-        set_active_bitwidths(base_model, inference_args.inf_bit_config)
+        set_active_bitwidths(base_model, inference_args.inf_bit_config, inference_args.default_bit)
         base_model.eval()
 
     # # load peft config
