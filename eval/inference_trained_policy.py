@@ -70,8 +70,8 @@ class InferenceArguments:
                  bit_choices="32",
                  max_inf_size=100,
                  quant_layers="6,11",
-                #  inf_bit_config={f"transformer.h.{i}": 32 for i in range(12)},
-                 inf_bit_config={}):
+                 inf_bit_config={},
+                 default_bit=32):
         self.eval_json_path = eval_json_path
         self.adapter_path = adapter_path
         self.output_csv_path = output_csv_path
@@ -82,6 +82,7 @@ class InferenceArguments:
         self.max_inf_size = max_inf_size
         self.quant_layers = quant_layers
         self.inf_bit_config = inf_bit_config
+        self.default_bit = default_bit
 
 # Score squad metrics (EM, F1) after inference
 def score_squad(predictions, references):
@@ -162,7 +163,8 @@ def make_parser(subparsers: argparse._SubParsersAction = None):
                        help="Comma-separated list of h.* layers to quantize")
     parser.add_argument("--inf_bit_config", type=str, default=None,
                        help="JSON string for inference bit configuration (e.g., '{\"transformer.h.0\": 8, \"transformer.h.1\": 4}'). Default: 32 bits for all layers")
-    
+    parser.add_argument("--default_bit", type=int, default=32,
+                       help="Default bit for all layers")
     return parser
 
 def main(script_args, training_args, model_args, inference_args):
@@ -415,7 +417,8 @@ if __name__ == "__main__":
         bit_choices=args.bit_choices,
         max_inf_size=args.max_inf_size,
         quant_layers=args.quant_layers,
-        inf_bit_config=args.inf_bit_config
+        inf_bit_config=args.inf_bit_config,
+        default_bit=args.default_bit
     )
     
     # Run inference

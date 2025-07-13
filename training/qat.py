@@ -155,18 +155,18 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_l
             module._active_bit = bit_widths[0]  # set default
             module._bit_choices = bit_widths
 
-def set_active_bitwidths(model, bit_config_dict):
+def set_active_bitwidths(model, bit_config_dict, default_bit=32):
     print(f"\n[set_active] start: {bit_config_dict}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
-            # Default all layers to inactive
-            module._active_bit = None
+            # Default bit for all layers
+            module._active_bit = default_bit
 
-            # Only activate layers that are explicitly configured
-            for prefix, bit in bit_config_dict.items():
-                if name.startswith(prefix):
-                    module._active_bit = bit  # ✅ only activate if explicitly configured
-                    # print(f"[set_active] set {name} to {bit} bits")
+            # Check each configuration pattern
+            for pattern, bit in bit_config_dict.items():
+                if pattern in name:
+                    module._active_bit = bit
+                    break
 
 # 1. Configures requires_grad for all layers
 # 2. Define custom forward, which creates lora at runtime
