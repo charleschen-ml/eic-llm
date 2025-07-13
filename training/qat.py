@@ -496,8 +496,8 @@ def main(script_args, training_args, model_args, qat_args):
         print(f"Validation set not created (max_dataset_size <= 1)")
     print("Example preprocessed train sample:")
     print(train_dataset[0]["text"])
-    eval_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/nn/eic_llm/eval_set.json") # Save eval set for inference script
-    train_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/nn/eic_llm/train_set.json") # Save train set (for debug)
+    eval_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/eic_llm/eval_set.json") # Save eval set for inference script
+    train_dataset.to_json("/content/drive/MyDrive/Colab_Notebooks/eic_llm/train_set.json") # Save train set (for debug)
 
     ################
     # Training
