@@ -436,10 +436,10 @@ def main(script_args, training_args, model_args, qat_args):
     eos = tokenizer.eos_token if tokenizer is not None else ""
     
     # Debug: Manually set active
-    temp_bit_config_dict = {
-        f"transformer.h.{i}": 32 for i in range(12)
-    }
-    set_active_bitwidths(model, temp_bit_config_dict)
+    # temp_bit_config_dict = {
+    #     f"transformer.h.{i}": 32 for i in range(12)
+    # }
+    # set_active_bitwidths(model, temp_bit_config_dict)
 
     # Create lora (lazy init)
     if True: # debug: always create lora
