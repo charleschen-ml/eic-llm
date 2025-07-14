@@ -37,6 +37,7 @@ from qat import (
     add_bitwise_lora_adapters
 )
 import os
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 from textattack.models.wrappers import ModelWrapper
@@ -224,15 +225,24 @@ def run_adverse(model, tokenizer, dataset):
     results_pert = score_squad(predictions_pert, references)
     save_predictions_to_csv(predictions_pert, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_pert.csv")
 
+# class DummyClassificationWrapper(ModelWrapper):
+#     def __init__(self, tokenizer):
+#         self.tokenizer = tokenizer
+#         self.model = None  # unused
+#
+#     def __call__(self, text_input_list):
+#         # Fake logits for 2-class output
+#         import numpy as np
+#         return [[1.0, 0.0] for _ in text_input_list]  # or use random scores
+
 class DummyClassificationWrapper(ModelWrapper):
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
-        self.model = None  # unused
 
     def __call__(self, text_input_list):
-        # Fake logits for 2-class output
-        import numpy as np
-        return [[1.0, 0.0] for _ in text_input_list]  # or use random scores
+        # Just tokenize to appease TextAttack internals
+        _ = self.tokenizer(text_input_list, return_tensors="pt", padding=True, truncation=True)
+        return [[1.0, 0.0] for _ in text_input_list]
 
 def main(script_args, training_args, model_args, inference_args):
     """
