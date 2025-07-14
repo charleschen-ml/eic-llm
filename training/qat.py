@@ -301,13 +301,26 @@ class BitwidthSchedulingCallback(TrainerCallback):
                 print(f"[CyclicBitwidth] Step {self.step_count}: Using {current_bit}-bit quantization")
             
             set_active_bitwidths(self.model, bit_config)
-        elif self.bitwidth_schedule == "random":
-            # Use random bit-width assignment (original behavior)
+        # elif self.bitwidth_schedule == "random": # To remove: per LAYER random bit assignment
+        #     # Use random bit-width assignment (original behavior)
+        #     bit_config = {}
+        #     for name, module in self.model.named_modules():
+        #         if hasattr(module, "_quantized_weights") and "lm_head" not in name:
+        #             chosen_bit = random.choice(self.bit_choices)
+        #             bit_config[name] = chosen_bit
+        #     set_active_bitwidths(self.model, bit_config)
+        elif self.bitwidth_schedule == "random": # per SUBMODULE random bit assignment
+            # Assign a random bit-width to each submodule individually
             bit_config = {}
             for name, module in self.model.named_modules():
                 if hasattr(module, "_quantized_weights") and "lm_head" not in name:
-                    chosen_bit = random.choice(self.bit_choices)
-                    bit_config[name] = chosen_bit
+                    # For modules that have quantized submodules, assign random bits per submodule
+                    for subname, submodule in module.named_parameters(recurse=False):
+                        full_name = f"{name}.{subname}"
+                        chosen_bit = random.choice(self.bit_choices)
+                        bit_config[full_name] = chosen_bit
+                    # If needed, also assign to the main module itself
+                    bit_config[name] = random.choice(self.bit_choices)
             set_active_bitwidths(self.model, bit_config)
         else:
             bit_config = {}
