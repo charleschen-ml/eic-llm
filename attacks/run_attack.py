@@ -165,36 +165,59 @@ def generate_answer(model, tokenizer, prompt):
         )
     return tokenizer.decode(output[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip().split("\n")[0].strip()
 
-def run_adverse(model, tokenizer, inputs):
-    attack_dataset = Dataset(inputs)
+def run_adverse(model, tokenizer, dataset):
+    # Create inputs and references
+    inputs = []
+    references = []
+    for example in tqdm(dataset, desc="Evaluating", disable=True):
+        context = example["context"].strip()
+        question = example["question"].strip()
+        qid = example.get("id", f"id_{len(inputs)}")
+        prompt = f"{context}\n{question}"
+        answer = example["answers"]["text"][0] if example["answers"]["text"] else ""
+        inputs.append((prompt, answer))
 
+        references.append({
+            "id": qid,
+            "answers": example["answers"]
+        })
+
+    # Create attacker
+    attack_dataset = Dataset(inputs)
+    NUM_EXAMPLES = len(inputs)
     model_wrapper = HuggingFaceModelWrapper(model, tokenizer)
     attack = TextFoolerJin2019.build(model_wrapper)
     attack_args = AttackArgs(num_examples=NUM_EXAMPLES, disable_stdout=True)
     attacker = Attacker(attack, attack_dataset, attack_args)
 
-    em_baseline_total, em_attack_total = 0.0, 0.0
-
-    for attack_result, (_, ground_truth) in zip(attacker.attack_dataset(), inputs):
+    # Inference loop
+    predictions_orig = []
+    predictions_pert = []
+    for i, (attack_result, (prompt, ground_truth)) in enumerate(zip(attacker.attack_dataset(), inputs)):
         orig_prompt = attack_result.original_text
         pert_prompt = attack_result.perturbed_text
+        qid = f"id_{i}"
 
         pred_orig = generate_answer(model, tokenizer, orig_prompt)
         pred_pert = generate_answer(model, tokenizer, pert_prompt)
 
-        em_orig, _ = score_squad(pred_orig, ground_truth)
-        em_pert, _ = score_squad(pred_pert, ground_truth)
+        predictions_orig.append({
+            "id": qid,
+            "prediction_text": pred_orig
+        })
 
-        print(f"\nGT: {ground_truth}")
-        print(f"Original: {pred_orig} | EM: {em_orig:.1f}")
-        print(f"Perturbed: {pred_pert} | EM: {em_pert:.1f}")
+        predictions_pert.append({
+            "id": qid,
+            "prediction_text": pred_pert
+        })
 
-        em_baseline_total += em_orig
-        em_attack_total += em_pert
+    print("\nScoring original predictions:")
+    results_orig = score_squad(predictions_orig, references)
+    save_predictions_to_csv(predictions_orig, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_orig.csv")
 
-    print("\n===================")
-    print(f"Avg EM (original): {em_baseline_total / NUM_EXAMPLES:.2f}")
-    print(f"Avg EM (attacked): {em_attack_total / NUM_EXAMPLES:.2f}")
+    print("\nScoring perturbed predictions:")
+    results_pert = score_squad(predictions_pert, references)
+    save_predictions_to_csv(predictions_pert, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_pert.csv")
 
 def main(script_args, training_args, model_args, inference_args):
     """
@@ -280,19 +303,19 @@ def main(script_args, training_args, model_args, inference_args):
         base_model.eval()
 
     # load squad dataset from hf
-    df = load_dataset("rajpurkar/squad", split="train") # split="train" or "validation"
-    USE_ADVERSE = True
-    if USE_ADVERSE:
-        df_adverse = df.map(lambda x: {
-            "prompt": x["context"].strip() + "\n" + x["question"].strip(),
-            "answer": x["answers"]["text"][0] if x["answers"]["text"] else ""
-        })
-        inputs = list(zip(df_adverse["prompt"], df_adverse["answer"]))
-        run_adverse(base_model, tokenizer, inputs)
-
-    df_context = df["context"]
-    df_question = df["question"]
-    df = df.map(lambda x: {"prompt": x["context"].strip() + "\n" + x["question"].strip() + "\n"}) # match sft style
+    # df = load_dataset("rajpurkar/squad", split="train") # split="train" or "validation"
+    # USE_ADVERSE = True
+    # if USE_ADVERSE:
+    #     df_adverse = df.map(lambda x: { # list of tuples (prompt, answer)
+    #         "prompt": x["context"].strip() + "\n" + x["question"].strip(),
+    #         "answer": x["answers"]["text"][0] if x["answers"]["text"] else ""
+    #     })
+    #     inputs = list(zip(df_adverse["prompt"], df_adverse["answer"]))
+    #     run_adverse(base_model, tokenizer, inputs) # run adversarial EM eval
+    #
+    # df_context = df["context"]
+    # df_question = df["question"]
+    # df = df.map(lambda x: {"prompt": x["context"].strip() + "\n" + x["question"].strip() + "\n"}) # match sft style
 
     ################
     # Generate completions after sft training
@@ -320,57 +343,12 @@ def main(script_args, training_args, model_args, inference_args):
         if hasattr(module, "_lora_adapters") and hasattr(module, "_active_bit"):
             print(f"{name} | Active bitwidth: {module._active_bit} | Available: {list(module._lora_adapters.keys())}")
 
-    # Inference loop
-    predictions, references = [], []
+    print("\nAdversarial attack:\n")
 
-    print("\nAFTER TRAINING:\n")
+    # Run adversarial attack
+    run_adverse(base_model, tokenizer, dataset)
 
-    for example in tqdm(dataset, desc="Evaluating", disable=True):
-        context = example["context"].strip()
-        question = example["question"].strip()
-        qid = example.get("id", f"id_{len(predictions)}")
-        prompt = f"{example['context'].strip()}\n{example['question'].strip()}\n"
-        # print(f"prompt = \n{prompt}")
-
-        # Generate answer using peft_sft
-        inputs = tokenizer(
-            prompt,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=512,
-        ).to(peft_sft.device)
-
-        # for name, module in peft_sft.named_modules(): 
-        #     if hasattr(module, "_lora_adapters"):
-        #         print(f"{name}: {list(module._lora_adapters.keys())}")
-
-        with torch.no_grad():
-            outputs = peft_sft.generate(
-                **inputs,
-                max_new_tokens=32,
-                do_sample=False,
-                eos_token_id=tokenizer.eos_token_id,
-                pad_token_id=tokenizer.eos_token_id
-            )
-
-        generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
-        generated_truncated = generated.split("\n")[0].strip()
-
-        predictions.append({
-            "id": qid,
-            "prediction_text": generated
-        })
-
-        references.append({
-            "id": qid,
-            "answers": example["answers"]
-        })
-
-    results = score_squad(predictions, references)
-    save_predictions_to_csv(predictions, references, inference_args.output_csv_path)
-    
-    return results
+    return 0
 
 if __name__ == "__main__":
     # parse script arguments
