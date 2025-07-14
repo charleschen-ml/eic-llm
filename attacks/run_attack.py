@@ -39,6 +39,7 @@ from qat import (
 import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
+from textattack.models.wrappers import ModelWrapper
 from textattack.models.wrappers import HuggingFaceModelWrapper
 from textattack.attack_recipes import TextFoolerJin2019
 from textattack.datasets import Dataset
@@ -186,7 +187,7 @@ def run_adverse(model, tokenizer, dataset):
     # Create attacker
     attack_dataset = Dataset(inputs)
     NUM_EXAMPLES = len(inputs)
-    model_wrapper = HuggingFaceModelWrapper(model, tokenizer)
+    model_wrapper = DummyClassificationWrapper(tokenizer)
     attack = TextFoolerJin2019.build(model_wrapper)
     attack_args = AttackArgs(num_examples=NUM_EXAMPLES, disable_stdout=True)
     attacker = Attacker(attack, attack_dataset, attack_args)
@@ -222,6 +223,16 @@ def run_adverse(model, tokenizer, dataset):
     print("\nScoring perturbed predictions:")
     results_pert = score_squad(predictions_pert, references)
     save_predictions_to_csv(predictions_pert, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_pert.csv")
+
+class DummyClassificationWrapper(ModelWrapper):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+        self.model = None  # unused
+
+    def __call__(self, text_input_list):
+        # Fake logits for 2-class output
+        import numpy as np
+        return [[1.0, 0.0] for _ in text_input_list]  # or use random scores
 
 def main(script_args, training_args, model_args, inference_args):
     """
