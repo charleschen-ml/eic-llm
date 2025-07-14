@@ -238,6 +238,7 @@ def run_adverse(model, tokenizer, dataset):
 class DummyClassificationWrapper(ModelWrapper):
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
+        self.model = self
 
     def __call__(self, text_input_list):
         # Just tokenize to appease TextAttack internals
