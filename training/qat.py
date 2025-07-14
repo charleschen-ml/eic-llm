@@ -168,8 +168,7 @@ def set_active_bitwidths(model, bit_config_dict, default_bit=32):
                     module._active_bit = bit
                     break
 
-# 1. Configures requires_grad for all layers
-# 2. Define custom forward, which creates lora at runtime
+# Define custom forward, which creates lora at runtime
 def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
     # # Freeze all layers by default
     # for param in model.parameters():
