@@ -181,6 +181,7 @@ def run_adverse(model, tokenizer, dataset):
             "id": qid,
             "answers": example["answers"]
         })
+    print("\n[run_adverse] inputs and refs created")
 
     # Create attacker
     attack_dataset = Dataset(inputs)
@@ -189,6 +190,7 @@ def run_adverse(model, tokenizer, dataset):
     attack = TextFoolerJin2019.build(model_wrapper)
     attack_args = AttackArgs(num_examples=NUM_EXAMPLES, disable_stdout=True)
     attacker = Attacker(attack, attack_dataset, attack_args)
+    print("\n[run_adverse] attacker created")
 
     # Inference loop
     predictions_orig = []
