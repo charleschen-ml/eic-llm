@@ -186,7 +186,7 @@ def run_adverse(model, tokenizer, dataset):
     print("\n[run_adverse] inputs and refs created")
 
     # Create attacker
-    attack_dataset = Dataset(inputs)
+    attack_dataset = Dataset([(prompt, 1) for prompt, _ in inputs])
     NUM_EXAMPLES = len(inputs)
     model_wrapper = DummyClassificationWrapper(tokenizer)
     attack = TextFoolerJin2019.build(model_wrapper)
@@ -225,16 +225,6 @@ def run_adverse(model, tokenizer, dataset):
     results_pert = score_squad(predictions_pert, references)
     save_predictions_to_csv(predictions_pert, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_pert.csv")
 
-# class DummyClassificationWrapper(ModelWrapper):
-#     def __init__(self, tokenizer):
-#         self.tokenizer = tokenizer
-#         self.model = None  # unused
-#
-#     def __call__(self, text_input_list):
-#         # Fake logits for 2-class output
-#         import numpy as np
-#         return [[1.0, 0.0] for _ in text_input_list]  # or use random scores
-
 class DummyClassificationWrapper(ModelWrapper):
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
@@ -243,7 +233,7 @@ class DummyClassificationWrapper(ModelWrapper):
     def __call__(self, text_input_list):
         # Just tokenize to appease TextAttack internals
         _ = self.tokenizer(text_input_list, return_tensors="pt", padding=True, truncation=True)
-        return [[1.0, 0.0] for _ in text_input_list]
+        return [[0.1, 0.9] for _ in text_input_list]
 
 def main(script_args, training_args, model_args, inference_args):
     """
