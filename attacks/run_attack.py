@@ -198,9 +198,9 @@ def run_adverse(model, tokenizer, dataset):
     predictions_orig = []
     predictions_pert = []
     for i, (attack_result, (prompt, ground_truth)) in enumerate(zip(attacker.attack_dataset(), inputs)):
-        orig_prompt = attack_result.original_text
+        orig_prompt = attack_result.original_text()
         print(f"orig_prompt = {orig_prompt}")
-        pert_prompt = attack_result.perturbed_text
+        pert_prompt = attack_result.perturbed_text()
         print(f"pert_prompt = {pert_prompt}")
         qid = f"id_{i}"
 
