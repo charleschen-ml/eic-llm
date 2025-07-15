@@ -190,6 +190,7 @@ def run_adverse(model, tokenizer, dataset):
     NUM_EXAMPLES = len(inputs)
     model_wrapper = DummyClassificationWrapper(tokenizer)
     attack = TextFoolerJin2019.build(model_wrapper)
+    attack.constraints = []  # for maximum perturbation
     attack_args = AttackArgs(num_examples=NUM_EXAMPLES, disable_stdout=True)
     attacker = Attacker(attack, attack_dataset, attack_args)
     print("\n[run_adverse] attacker created")
@@ -202,6 +203,11 @@ def run_adverse(model, tokenizer, dataset):
         print(f"orig_prompt = {orig_prompt}")
         pert_prompt = attack_result.perturbed_text()
         print(f"pert_prompt = {pert_prompt}")
+        if orig_prompt != pert_prompt:
+            print("✅ Prompt was perturbed.")
+        else:
+            print("❌ Prompt was NOT perturbed.")
+
         qid = f"id_{i}"
 
         pred_orig = generate_answer(model, tokenizer, orig_prompt)
