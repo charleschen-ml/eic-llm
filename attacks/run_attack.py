@@ -46,6 +46,13 @@ from textattack.attack_recipes import TextFoolerJin2019
 from textattack.datasets import Dataset
 from textattack import Attacker, AttackArgs
 
+from textattack.attack_recipes.attack_recipe import AttackRecipe
+from textattack.transformations import WordSwapEmbedding
+from textattack.search_methods import GreedyWordSwapWIR
+from textattack.goal_functions import InputReduction
+from textattack.constraints.pre_transformation import RepeatModification
+from textattack.shared import Attack
+
 # Custom arguments for inference-specific parameters
 class InferenceArguments:
     def __init__(self, 
@@ -189,7 +196,8 @@ def run_adverse(model, tokenizer, dataset):
     attack_dataset = Dataset([(prompt, 1) for prompt, _ in inputs])
     NUM_EXAMPLES = len(inputs)
     model_wrapper = DummyClassificationWrapper(tokenizer)
-    attack = TextFoolerJin2019.build(model_wrapper)
+    # attack = TextFoolerJin2019.build(model_wrapper)
+    attack = UnconstrainedWordSwapAttack.build(model_wrapper)
     attack.constraints = []  # for maximum perturbation
     attack_args = AttackArgs(num_examples=NUM_EXAMPLES, disable_stdout=True)
     attacker = Attacker(attack, attack_dataset, attack_args)
@@ -240,6 +248,15 @@ class DummyClassificationWrapper(ModelWrapper):
         # Just tokenize to appease TextAttack internals
         _ = self.tokenizer(text_input_list, return_tensors="pt", padding=True, truncation=True)
         return [[0.1, 0.9] for _ in text_input_list]
+
+class UnconstrainedWordSwapAttack(AttackRecipe):
+    @staticmethod
+    def build(model_wrapper):
+        transformation = WordSwapEmbedding(max_candidates=10)
+        constraints = [RepeatModification()]  # Minimal constraint
+        goal_function = InputReduction(model_wrapper)
+        search_method = GreedyWordSwapWIR()
+        return Attack(goal_function, constraints, transformation, search_method)
 
 def main(script_args, training_args, model_args, inference_args):
     """
