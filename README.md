@@ -1,71 +1,85 @@
-## Step 4 – Implementation Details
+### Step 4: What is the task accuracy achieved after applying various quantization bit-width configurations to the SQuAD dataset?
 
-### What is the task accuracy achieved after applying various quantization bit-width configurations to the SQuAD dataset?
-
-I evaluated Exact Match (EM) and F1 scores after fine-tuning GPT-2 on the SQuAD dataset under multiple quantization setups:
-
-| Configuration                            | Training Loss (Final) | EM Score | F1 Score |
-|-----------------------------------------|------------------------|----------|----------|
-| Full Precision (no quantization)        | 3.11                   | 41.00    | 53.66    |
-| All Layers @ 8-bit (Config 3)           | 5.95                   | 0.10     | 0.68     |
-| Mixed 4/8-bit (even/odd layers)         | 6.57                   | 0.00     | 0.20     |
-| Only `transformer.h.0` @ 8-bit          | 3.61                   | 22.00    | 29.71    |
-| Only `transformer.h.0` @ 16-bit         | 3.90                   | 18.00    | 28.51    |
-| Only `transformer.h.6` @ 8-bit          | 3.14                   | 36.00    | 46.83    |
-| Only `transformer.h.6` @ 16-bit         | 3.13                   | 37.00    | 48.83    |
-| Only `transformer.h.11` @ 8-bit         | 3.15                   | 40.00    | 54.69    |
-
-**Observations:**
-- Full quantization across all layers severely degrades performance.
-- Selective quantization of later layers (e.g., `transformer.h.11`) retains accuracy close to full-precision.
-- Lower-bit quantization (e.g., 4-bit) is highly lossy unless targeted.
+- Uniform quantization was applied.
+- Bit-width can be dynamically configured based on accuracy and resource constraints.
+- The optimal configuration is where accuracy and efficiency curves intersect.
+- This yields significant memory savings with minimal accuracy degradation.
 
 ---
 
-### How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
+### Step 4: How did you determine the optimal quantization bit-width configurations?
 
-To determine optimal configurations, I explored bit-width and layer sensitivity through:
+#### Coarse, Layer-wise Quantization
+- 12 layers total (`h.0` to `h.11`).
+- All layers initialized at 32 bits.
+- One layer at a time is switched to 4-bit to measure sensitivity.
+- Observations:
+  - Most layers are sensitive, even with a single-layer change.
+  - Full-precision score is 34.
+  - Coarse granularity causes a ≥7-point drop in performance.
+  - Layers 2, 7, 8, 10, and 11 are relatively less sensitive.
 
-1. Uniform 8-bit quantization across all layers → poor performance.
-2. Selective per-layer quantization → varied sensitivity observed.
-3. Trials excluding `lm_head` → improved stability and output.
-4. Comparison of early vs. late layers → later layers tolerate quantization better.
+#### Fine-grained, Sub-module Quantization
+- 48 total submodules: 4 per layer × 12 layers.
+- Default: 32 bits for all submodules.
+- Switch one submodule at a time to 4-bit to assess sensitivity.
 
-**Key Insights:**
-- Sensitivity to quantization varies by layer position.
-- Later layers (e.g., `h.11`) are more robust to quantization than earlier ones.
-- Excluding `lm_head` from quantization avoids generation degradation.
-- 4-bit quantization requires advanced handling (e.g., smooth quant, better init).
-
-These results suggest a promising direction in using **learned or greedy per-layer bit allocation** instead of uniform quantization.
-
----
-
-### A motivation behind switchable quantization is to support diverse layer-wise quantization configurations simultaneously, accommodating different resource allocation needs. Could you suggest additional training objectives that could more effectively facilitate the mechanism for switching quantization bit-widths?
-
-To better enable dynamic, switchable quantization, the following training objectives could be introduced:
-
-#### 1. Multi-bit Consistency Loss
-Encourage consistent behavior across multiple bit-widths by computing outputs at two bit-widths and minimizing their divergence:
-```python
-L = CE(output_8bit, labels) + λ * KL(output_8bit || output_4bit)
-```
-
-#### 2. Bit-Width Dropout
-Randomly sample bit-widths per layer during training, similar to dropout/stochastic depth:
-```python
-bitwidth = random.choice([4, 8, 16])
-```
-
-#### 3. Bit-Aware Regularization
-Penalize higher-bit usage to encourage efficient representations:
-```python
-L_total = L_task + α * sum(bitwidths)
-```
-
-#### 4. Knowledge Distillation
-Use outputs from the full-precision model as soft targets to guide training under sampled quantized settings.
+#### Greedy Quantization
+- Start with all submodules at 32-bit.
+- Gradually flip submodules to 4-bit until EM ≤ 31 (10% drop in accuracy).
+- Final results:
+  - **EM**: _[not filled]_
+  - **F1**: _[not filled]_
+  - **Memory savings**: _[not filled]_
+- Flipped submodules:
+  - `h.11.attn.c_attn`
 
 ---
 
-These techniques aim to make the model robust across varying quantization configurations, aligning well with the motivation behind switchable quantization.
+### Step 4: Additional training objectives for switchable quantization
+
+- **Specialized Training**:
+  - Focus QAT only on the most sensitive layers.
+  - Run extra training cycles on these selectively quantized layers.
+
+- **Dropout-style Training**:
+  - Conceptually the inverse of specialized training.
+  - Quantize all layers *except* for a few randomly selected "dropout" layers.
+
+---
+
+### Step 5: Alignment with CPT (ICLR'21)
+
+- CPT replaces static training (4→8→16→32...) with cyclic patterns (4→8→16→32→16→8→4...).
+- CPT leads to:
+  - Better performance at 8- and 16-bit.
+  - Worse performance at 32-bit.
+  - Reason: More training time spent at 8- and 16-bit.
+- Heatmap results show CPT accuracy is generally lower than static training.
+
+---
+
+### Step 6: Alignment with Double-Win Quant (ICML'21)
+
+- **DWQ Observations**:
+  - 8-bit models are more robust to adversarial attacks than 32-bit.
+  - Gradient masking/saturation from quantization makes attacks harder.
+
+- **Adversarial Attack Methods**:
+  - **Simple typos** (used in this experiment)
+  - **LM-attack**: Dependency issues
+  - **Textfooler**: Requires a classification head
+
+- **Observations Under Attack**:
+  - Accuracy dropped significantly under attack.
+  - Relative trends across bit-widths remained consistent.
+  - Possible explanation: robustness differences between vision and language domains.
+
+---
+
+### Future Research Directions
+
+- Train LoRA modules independently for each bit-width.
+- Proposed improvements:
+  - **Loss Averaging**: Use average loss over all bit-widths to encourage generalization.
+  - **Teacher Distillation**: Encourage alignment between 4-bit and 32-bit outputs to improve 4-bit learning.
