@@ -51,7 +51,7 @@ from textattack.transformations import WordSwapEmbedding
 from textattack.search_methods import GreedyWordSwapWIR
 from textattack.goal_functions import InputReduction
 from textattack.constraints.pre_transformation import RepeatModification
-from textattack.shared import Attack
+from textattack.attack import Attack
 
 # Custom arguments for inference-specific parameters
 class InferenceArguments:
