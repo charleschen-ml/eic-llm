@@ -40,11 +40,25 @@ import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
-from textattack.models.wrappers import ModelWrapper
-from textattack.models.wrappers import HuggingFaceModelWrapper
-from textattack.attack_recipes import TextFoolerJin2019
-from textattack.datasets import Dataset
-from textattack import Attacker, AttackArgs
+from openprompt.plms import load_plm
+from openprompt import PromptDataLoader
+from openprompt.data_utils import InputExample
+from openprompt.prompts import ManualTemplate
+from openprompt import PromptForGeneration
+from openprompt.attack import LMAttacker
+
+# from textattack.models.wrappers import ModelWrapper
+# from textattack.models.wrappers import HuggingFaceModelWrapper
+# from textattack.attack_recipes import TextFoolerJin2019
+# from textattack.datasets import Dataset
+# from textattack import Attacker, AttackArgs
+
+# from textattack.attack_recipes.attack_recipe import AttackRecipe
+# from textattack.transformations import WordSwapEmbedding
+# from textattack.search_methods import GreedyWordSwapWIR
+# from textattack.goal_functions import InputReduction
+# from textattack.constraints.pre_transformation import RepeatModification
+# from textattack.attack import Attack
 
 # Custom arguments for inference-specific parameters
 class InferenceArguments:
@@ -168,78 +182,134 @@ def generate_answer(model, tokenizer, prompt):
     return tokenizer.decode(output[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip().split("\n")[0].strip()
 
 def run_adverse(model, tokenizer, dataset):
-    # Create inputs and references
-    inputs = []
-    references = []
-    for example in tqdm(dataset, desc="Evaluating", disable=True):
-        context = example["context"].strip()
-        question = example["question"].strip()
-        qid = example.get("id", f"id_{len(inputs)}")
+
+    model.eval()
+
+    # Wrap model
+    plm = model
+    wrapped_tokenizer = tokenizer
+    template = ManualTemplate(
+        text='{"placeholder":"text_a"} {"mask"}',
+        tokenizer=wrapped_tokenizer
+    )
+
+    # Convert to OpenPrompt format
+    input_examples = []
+    for i, ex in enumerate(dataset):
+        context = ex["context"].strip()
+        question = ex["question"].strip()
         prompt = f"{context}\n{question}"
-        answer = example["answers"]["text"][0] if example["answers"]["text"] else ""
-        inputs.append((prompt, answer))
+        input_examples.append(InputExample(guid=str(i), text_a=prompt))
 
-        references.append({
-            "id": qid,
-            "answers": example["answers"]
-        })
-    print("\n[run_adverse] inputs and refs created")
+    dataloader = PromptDataLoader(
+        dataset=input_examples,
+        tokenizer=wrapped_tokenizer,
+        template=template,
+        tokenizer_wrapper_class=None,
+        max_seq_length=512,
+        decoder_max_length=32,
+        batch_size=1,
+        shuffle=False,
+        teacher_forcing=False,
+    )
 
-    # Create attacker
-    attack_dataset = Dataset([(prompt, 1) for prompt, _ in inputs])
-    NUM_EXAMPLES = len(inputs)
-    model_wrapper = DummyClassificationWrapper(tokenizer)
-    attack = TextFoolerJin2019.build(model_wrapper)
-    attack.constraints = []  # for maximum perturbation
-    attack_args = AttackArgs(num_examples=NUM_EXAMPLES, disable_stdout=True)
-    attacker = Attacker(attack, attack_dataset, attack_args)
-    print("\n[run_adverse] attacker created")
+    prompt_model = PromptForGeneration(
+        plm=plm,
+        template=template,
+        freeze_plm=True,
+    )
 
-    # Inference loop
-    predictions_orig = []
-    predictions_pert = []
-    for i, (attack_result, (prompt, ground_truth)) in enumerate(zip(attacker.attack_dataset(), inputs)):
-        orig_prompt = attack_result.original_text()
-        print(f"orig_prompt = {orig_prompt}")
-        pert_prompt = attack_result.perturbed_text()
-        print(f"pert_prompt = {pert_prompt}")
-        if orig_prompt != pert_prompt:
-            print("✅ Prompt was perturbed.")
-        else:
-            print("❌ Prompt was NOT perturbed.")
+    attacker = LMAttacker(prompt_model, dataloader)
+    attack_results = attacker.attack()
 
-        qid = f"id_{i}"
+    print("\n🧨 Adversarial results:")
+    for orig, pert in attack_results:
+        print(f"\n[Original]: {orig}")
+        print(f"[Perturbed]: {pert}")
 
-        pred_orig = generate_answer(model, tokenizer, orig_prompt)
-        pred_pert = generate_answer(model, tokenizer, pert_prompt)
+# def run_adverse(model, tokenizer, dataset):
+#     # Create inputs and references
+#     inputs = []
+#     references = []
+#     for example in tqdm(dataset, desc="Evaluating", disable=True):
+#         context = example["context"].strip()
+#         question = example["question"].strip()
+#         qid = example.get("id", f"id_{len(inputs)}")
+#         prompt = f"{context}\n{question}"
+#         answer = example["answers"]["text"][0] if example["answers"]["text"] else ""
+#         inputs.append((prompt, answer))
 
-        predictions_orig.append({
-            "id": qid,
-            "prediction_text": pred_orig
-        })
+#         references.append({
+#             "id": qid,
+#             "answers": example["answers"]
+#         })
+#     print("\n[run_adverse] inputs and refs created")
 
-        predictions_pert.append({
-            "id": qid,
-            "prediction_text": pred_pert
-        })
+#     # Create attacker
+#     attack_dataset = Dataset([(prompt, 1) for prompt, _ in inputs])
+#     NUM_EXAMPLES = len(inputs)
+#     model_wrapper = DummyClassificationWrapper(tokenizer)
+#     # attack = TextFoolerJin2019.build(model_wrapper)
+#     attack = UnconstrainedWordSwapAttack.build(model_wrapper)
+#     attack.constraints = []  # for maximum perturbation
+#     attack_args = AttackArgs(num_examples=NUM_EXAMPLES, disable_stdout=True)
+#     attacker = Attacker(attack, attack_dataset, attack_args)
+#     print("\n[run_adverse] attacker created")
 
-    print("\nScoring original predictions:")
-    results_orig = score_squad(predictions_orig, references)
-    save_predictions_to_csv(predictions_orig, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_orig.csv")
+#     # Inference loop
+#     predictions_orig = []
+#     predictions_pert = []
+#     for i, (attack_result, (prompt, ground_truth)) in enumerate(zip(attacker.attack_dataset(), inputs)):
+#         orig_prompt = attack_result.original_text()
+#         print(f"orig_prompt = {orig_prompt}")
+#         pert_prompt = attack_result.perturbed_text()
+#         print(f"pert_prompt = {pert_prompt}")
+#         if orig_prompt != pert_prompt:
+#             print("✅ Prompt was perturbed.")
+#         else:
+#             print("❌ Prompt was NOT perturbed.")
 
-    print("\nScoring perturbed predictions:")
-    results_pert = score_squad(predictions_pert, references)
-    save_predictions_to_csv(predictions_pert, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_pert.csv")
+#         qid = f"id_{i}"
 
-class DummyClassificationWrapper(ModelWrapper):
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-        self.model = self
+#         pred_orig = generate_answer(model, tokenizer, orig_prompt)
+#         pred_pert = generate_answer(model, tokenizer, pert_prompt)
 
-    def __call__(self, text_input_list):
-        # Just tokenize to appease TextAttack internals
-        _ = self.tokenizer(text_input_list, return_tensors="pt", padding=True, truncation=True)
-        return [[0.1, 0.9] for _ in text_input_list]
+#         predictions_orig.append({
+#             "id": qid,
+#             "prediction_text": pred_orig
+#         })
+
+#         predictions_pert.append({
+#             "id": qid,
+#             "prediction_text": pred_pert
+#         })
+
+#     print("\nScoring original predictions:")
+#     results_orig = score_squad(predictions_orig, references)
+#     save_predictions_to_csv(predictions_orig, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_orig.csv")
+
+#     print("\nScoring perturbed predictions:")
+#     results_pert = score_squad(predictions_pert, references)
+#     save_predictions_to_csv(predictions_pert, references, "/content/drive/MyDrive/Colab_Notebooks/eic_llm/predictions_pert.csv")
+
+# class DummyClassificationWrapper(ModelWrapper):
+#     def __init__(self, tokenizer):
+#         self.tokenizer = tokenizer
+#         self.model = self
+
+#     def __call__(self, text_input_list):
+#         # Just tokenize to appease TextAttack internals
+#         _ = self.tokenizer(text_input_list, return_tensors="pt", padding=True, truncation=True)
+#         return [[0.1, 0.9] for _ in text_input_list]
+
+# class UnconstrainedWordSwapAttack(AttackRecipe):
+#     @staticmethod
+#     def build(model_wrapper):
+#         transformation = WordSwapEmbedding(max_candidates=10)
+#         constraints = [RepeatModification()]  # Minimal constraint
+#         goal_function = InputReduction(model_wrapper)
+#         search_method = GreedyWordSwapWIR()
+#         return Attack(goal_function, constraints, transformation, search_method)
 
 def main(script_args, training_args, model_args, inference_args):
     """
