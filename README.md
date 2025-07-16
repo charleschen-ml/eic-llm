@@ -91,8 +91,7 @@ Observations & Insights
   - LM-attack: dependency issues  
   - Textfooler: works only with LM’s with classification heads  
 - Below shows the accuracy scores after adversarial attack.  
-  - The accuracy scores degraded significantly under attack. Interestingly though, the trend remained similar to previously unattacked scores.
-  - This could be due to differences between vision and language modeling.
+  - The accuracy scores degraded significantly under attack. Interestingly though, the trend remained similar to previously unattacked scores. This could be due to differences between vision and language modeling.
 <p align="center">
   <img src="images/adversary-em.png" alt="adversary-em" width="400"/>
   <img src="images/adversary-f1.png" alt="adversary-f1" width="400"/>
