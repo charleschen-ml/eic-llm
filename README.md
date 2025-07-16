@@ -5,8 +5,9 @@
 
 ### Code Structure
 
-- Training/qat.py: Quantization-aware training (QAT)
-- Eval/inference_trained_policy.py: Inference fine-tuned model
+- training/qat.py: Quantization-aware training (QAT)
+- eval/inference_trained_policy.py: Inference fine-tuned model
+- attacks/prep_attack.py: generate attacked input
 - Colab: <a href="https://colab.research.google.com/drive/1bJHCr-zC6V6rtV8c_sytuTnsHRPR5hrU?usp=drive_link">eic-llm</a>
 
 ### Deliverables
