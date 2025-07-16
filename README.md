@@ -93,7 +93,7 @@ Observations & Insights
   - LM-attack: dependency issues  
   - Textfooler: works only with LM’s with classification heads
   - Text-based: Replace common words with typos (selected for use in my experiment) 
-- Below shows the accuracy scores after adversarial attack.  
+- The graphs below shows the accuracy scores after adversarial attack:  
   - The solid curve shows the accuracy scores with fixed-precision inference, whereas the dashed line shows the score with random-precision inference. The resulting accuracy score with RPI enabled is somewhere between 4-bit and 8-bit precision.
   - This shows contrary findings compared to that shown in ICML'21. One possible explanation is that DWQ's defense is designed to break gradient-based attacks trained at a specific precision like PGD. In our case, the adversarail attack is text-based, which is not tied to a specific precision, reducing the robustness improvement from RPT or RPI. 
 <p align="center">
