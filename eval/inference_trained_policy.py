@@ -1,4 +1,4 @@
-# Inference using 1.) base model, 2.) sft-trained model
+# Inference
 
 import shutil
 import evaluate
@@ -232,75 +232,8 @@ def main(script_args, training_args, model_args, inference_args):
         set_active_bitwidths(base_model, inference_args.inf_bit_config, inference_args.default_bit)
         base_model.eval()
 
-    # # load peft config
-    # peft_config = get_peft_config(model_args)
-    # if peft_config is None:
-    #     ref_policy = AutoModelForCausalLM.from_pretrained(
-    #         training_args.sft_model_path, trust_remote_code=model_args.trust_remote_code
-    #     )
-    # else:
-    #     ref_policy = None
-
-    # load squad dataset from hf
-    df = load_dataset("rajpurkar/squad", split="train") # split="train" or "validation"
-    df_context = df["context"]
-    df_question = df["question"]
-    df = df.map(lambda x: {"prompt": x["context"].strip() + "\n" + x["question"].strip() + "\n"}) # match sft style
-
-    # ################
-    # # Generate completions before training
-    # ################
-
-    # # Craete fresh peft model (for loading in 8-bit)
-    # peft_base = get_peft_model(base_model, peft_config)
-    # peft_base.eval()
-
-    # # Inference loop
-    # predictions, references = [], []
-
-    # print("\nBEFORE TRAINING:\n")
-
-    # for example in tqdm(dataset, desc="Evaluating", disable=True):
-    #     context = example["context"].strip()
-    #     question = example["question"].strip()
-    #     qid = example.get("id", f"id_{len(predictions)}")
-    #     prompt = f"{example['context'].strip()}\n{example['question'].strip()}"
-    #     print(f"prompt = \n{prompt}")
-
-    #     inputs = tokenizer(
-    #         prompt,
-    #         return_tensors="pt",
-    #         padding=True,
-    #         truncation=True,
-    #         max_length=512,
-    #     ).to(peft_base.device)
-
-    #     with torch.no_grad():
-    #         outputs = peft_base.generate(
-    #             **inputs,
-    #             max_new_tokens=32,
-    #             do_sample=False,
-    #             eos_token_id=tokenizer.eos_token_id,
-    #             pad_token_id=tokenizer.eos_token_id
-    #         )
-
-    #     generated = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True).strip()
-    #     generated_truncated = generated.split("\n")[0].strip()
-
-    #     predictions.append({
-    #         "id": qid,
-    #         "prediction_text": generated_truncated
-    #     })
-
-    #     references.append({
-    #         "id": qid,
-    #         "answers": example["answers"]
-    #     })
-
-    # results = score_squad(predictions, references)
-
     ################
-    # Generate completions after sft training
+    # Inference
     ################
 
     # Load sft-trained peft model
