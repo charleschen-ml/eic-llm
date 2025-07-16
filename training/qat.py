@@ -156,7 +156,7 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_l
             module._bit_choices = bit_widths
 
 def set_active_bitwidths(model, bit_config_dict, default_bit=32):
-    print(f"\n[set_active] start: {bit_config_dict}")  # debug
+    print(f"\n[set_active] bit_config_dict = {bit_config_dict} | default_bit = {default_bit}")  # debug
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             # Default bit for all layers
