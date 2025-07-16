@@ -18,8 +18,11 @@ Several methods were applied to evaluate the task accuaracy:
 - <b>Fine-grained, submodule-wise quantization</b>: 48 submodules total = 4 submodules / layer x 12 layers = 48 submodules
 
 Uniform quantization
-- This simple quantization method provides us with high-level insights on quantization sensitivity. In addition, it allows for dynamic bitwidth configuration at inference time based on the desired accuracy and available compute resources.
-- From the graphs below, the point where the accuracy and efficiency curves cross is the optimal bit-width configuration for accuracy-efficiency tradeoff. This allows for substantial memory savings while maintaining similar task accuracy
+- This simple quantization method provides us with high-level insights on quantization sensitivity.
+- The best accuracy score of 34 and 44 (EM and F1, respectively) is achieved at 32-bit (full-precision).
+- As we reduce the bitwidth, accuracy reduces while memory saving improves.
+- The optimal point for accuracy-efficiency tradeoff is where the two curves cross each other at 8-bit. Using this configuration, we achieve substantial memory saving while maintaining close to full-precision task accuracy.
+- In general, QAT allows for dynamic bitwidth configuration at inference time based on the desired accuracy and available compute resources.
 <p align="center">
   <img src="images/uniform-quant-em.png" alt="uniform quant em" width="400"/>
   <img src="images/uniform-quant-f1.png" alt="uniform quant f1" width="400"/>
@@ -48,12 +51,14 @@ Greedy quantization
   - h.11.attn.c_attn
 
 Insights
-- In general, fine-grained, submodule-wise quantization outperforms coarse, layer-wise quantization
-- In course quantization, all layers are pretty sensitive relative to the full-precision score of 34. This is due to this method simultaneously quantizing all submodules regardless of their quantization sensitivity.  
-- In course quantization, layers 2, 7, 8, 10, 11 are relatively less sensitive. However, any course quantization results in a minimum of 7% performance hit.
+- Fine-grained, submodule-wise quantization outperforms coarse, layer-wise quantization due to the course method simultaneously quantizing all submodules regardless of their quantization sensitivity.
+- From the course quantization experiment, we can see that:
+  - All layers are pretty sensitive relative to the full-precision score of 34.
+  - Layers 2, 7, 8, 10, 11 are relatively less sensitive (minimum of 7% performance hit).
+  - Earlier transformer layers (especially layer 0) are more sensitive.
 - From the fine quantization experiment, we can see that:
-  - Attention layer is more sensitive than MLP layer
-  - Earlier transformer layers are more sensitive to quantization
+  - MLP submodules (especially c_fc) are more sensitive than attention layers.
+  - Projection submodules are less sensitive.
 
 ---
 
