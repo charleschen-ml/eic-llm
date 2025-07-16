@@ -40,6 +40,9 @@ import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic error
 torch.use_deterministic_algorithms(True)
 
+# Settings
+USE_DEBUG = False
+
 # Custom arguments for inference-specific parameters
 class InferenceArguments:
     def __init__(self, 
@@ -243,20 +246,21 @@ def main(script_args, training_args, model_args, inference_args):
         peft_sft = PeftModel.from_pretrained(base_model, inference_args.adapter_path)  # Load peft model
         peft_sft.eval()
 
-    # Print created lora
-    print("\n🔍 Created LoRA Adapters:")
-    for name, module in peft_sft.named_modules():
-        if hasattr(module, "_lora_adapters"):
-            for bw, lora in module._lora_adapters.items():
-                weights = list(lora.parameters())
-                norm = sum(p.norm().item() for p in weights)
-                print(f"{name} | {bw}-bit LoRA norm: {norm:.4f}")
+    if USE_DEBUG:
+        # Print created lora
+        print("\n🔍 Created LoRA Adapters:")
+        for name, module in peft_sft.named_modules():
+            if hasattr(module, "_lora_adapters"):
+                for bw, lora in module._lora_adapters.items():
+                    weights = list(lora.parameters())
+                    norm = sum(p.norm().item() for p in weights)
+                    print(f"{name} | {bw}-bit LoRA norm: {norm:.4f}")
 
-    # Print active lora
-    print("\n🔍 Active LoRA Adapters:")
-    for name, module in peft_sft.named_modules():
-        if hasattr(module, "_lora_adapters") and hasattr(module, "_active_bit"):
-            print(f"{name} | Active bitwidth: {module._active_bit} | Available: {list(module._lora_adapters.keys())}")
+        # Print active lora
+        print("\n🔍 Active LoRA Adapters:")
+        for name, module in peft_sft.named_modules():
+            if hasattr(module, "_lora_adapters") and hasattr(module, "_active_bit"):
+                print(f"{name} | Active bitwidth: {module._active_bit} | Available: {list(module._lora_adapters.keys())}")
 
     # Inference loop
     predictions, references = [], []
