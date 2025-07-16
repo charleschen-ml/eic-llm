@@ -69,15 +69,15 @@
 
 #### [Step 6] Does this phenomenon align with the observations in Double-Win Quant (ICML’21)? If not, what could be the potential reasons?
 - In ICML’21, the authors found that  
-- Low-precision models (e.g. 8-bit) were more robust to adversarial perturbations than full-precision (32-bit) ones  
-- The explanation was that quantization induces gradient masking or saturation, which makes it harder for attackers to find effective perturbations  
+  - Low-precision models (e.g. 8-bit) were more robust to adversarial perturbations than full-precision (32-bit) ones  
+  - The explanation was that quantization induces gradient masking or saturation, which makes it harder for attackers to find effective perturbations  
 - Adversarial attack candidates  
   - Simple: Replace common words with typos (used in my experiment)  
   - LM-attack: dependency issues  
   - Textfooler: works only with LM’s with classification heads  
 - Below shows the accuracy scores after adversarial attack.  
-- The accuracy scores degraded significantly under attack. Interestingly though, the trend remained similar to previously unattacked scores  
-- This could be due to differences between vision and language modeling.
+  - The accuracy scores degraded significantly under attack. Interestingly though, the trend remained similar to previously unattacked scores.
+  - This could be due to differences between vision and language modeling.
 <p align="center">
   <img src="images/adversary-em.png" alt="adversary-em" width="400"/>
   <img src="images/adversary-f1.png" alt="adversary-f1" width="400"/>
