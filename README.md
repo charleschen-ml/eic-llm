@@ -12,38 +12,48 @@
 ### Deliverables
 
 #### [Step 4] What is the task accuracy achieved after applying various quantization bit-width configurations to the SQuAD dataset?
-- Uniform quantization shown below. In general, we can dynamically configure the bit-width based on the desired accuracy and available compute resources. 
+Several methods were applied to evaluate the task accuaracy:
+- <b>Uniform quantization</b>: Same bitwidth across all layers and submodules
+- <b>Coarse, layer-wise quantization</b>: 12 layers total (h.0 - h.11)  
+- <b>Fine-grained, submodule-wise quantization</b>: 48 submodules total = 4 submodules / layer x 12 layers = 48 submodules
+
+Uniform quantization
+- This simple quantization method provides us with high-level insights on quantization sensitivity. In addition, it allows for dynamic bitwidth configuration at inference time based on the desired accuracy and available compute resources.
 - From the graphs below, the point where the accuracy and efficiency curves cross is the optimal bit-width configuration for accuracy-efficiency tradeoff. This allows for substantial memory savings while maintaining similar task accuracy
 <p align="center">
   <img src="images/uniform-quant-em.png" alt="uniform quant em" width="400"/>
   <img src="images/uniform-quant-f1.png" alt="uniform quant f1" width="400"/>
 </p>
 
----
-
-#### [Step 4] How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
-
-##### Coarse, layer-wise quantization
-- 12 layers total (h.0 - h.11)  
-- All layers are 32 bits by default, and one layer is switched to 4 bit at a time to determine the layer-wise quantization sensitivity  
-- All layers are pretty sensitive relative to the full-precision score of 34. This is due to the coarse layer-wise quantization that does not perform finer-grained submodule-wise quantization.  
-- Layers 2, 7, 8, 10, 11 are relatively less sensitive, but note again that this course, layer-wise quantization results in a minimum of 7-point performance hit
+Coarse, layer-wise quantization
+- All layers are 32 bits by default, and one layer is switched to 4 bit at a time to determine the layer-wise quantization sensitivity
 <p align="center">
   <img src="images/layer-wise-quant.png" alt="layer wise quant" width="300"/>
 </p>
 
-##### Fine-grained, sub-module quantization
-- 48 submodules total = 4 submodules / layer x 12 layers = 48 submodules  
-- All submodules are 32 bits by default, and one submodule is switched to 4 bit at a time to determine the layer-wise quantization sensitivity
+Fine-grained, submodule-wise quantization  
+- All submodules are 32 bits by default, and one submodule is switched to 4 bit at a time to determine the layer-wise quantization sensitivity.
 <p align="center">
   <img src="images/heatmap-static.png" alt="heatpmap static" width="800"/>
 </p>
 
-##### Greedy quantization
+---
+
+#### [Step 4] How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
+
+Greedy quantization
 - Default all submodules to 32 bits, then flip submodule by submodule to 4-bit, and stop when EM score <= 31 (10% hit on accuracy)  
 - Final EM = , F1 =, Memory savings = %  
 - Layers flipped to 4 bits:  
   - h.11.attn.c_attn
+
+Insights
+- In general, fine-grained, submodule-wise quantization outperforms coarse, layer-wise quantization
+- In course quantization, all layers are pretty sensitive relative to the full-precision score of 34. This is due to this method simultaneously quantizing all submodules regardless of their quantization sensitivity.  
+- In course quantization, layers 2, 7, 8, 10, 11 are relatively less sensitive. However, any course quantization results in a minimum of 7% performance hit.
+- From the fine quantization experiment, we can see that:
+  - Attention layer is more sensitive than MLP layer
+  - Earlier transformer layers are more sensitive to quantization
 
 ---
 
