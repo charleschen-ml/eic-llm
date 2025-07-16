@@ -267,7 +267,7 @@ def main(script_args, training_args, model_args, inference_args):
         context = example["context"].strip()
         question = example["question"].strip()
         qid = example.get("id", f"id_{len(predictions)}")
-        prompt = f"{example['context'].strip()}\n{example['question'].strip()}\n"
+        prompt = f"{context}\n{question}\n"
         # print(f"prompt = \n{prompt}")
 
         inputs = tokenizer(
