@@ -4,6 +4,9 @@
 
 ### Code Structure
 
+- Training/qat.py: Quantization-aware training (QAT)
+- Eval/inference_trained_policy.py: Inference fine-tuned model
+
 ### Deliverables
 
 #### [Step 4] What is the task accuracy achieved after applying various quantization bit-width configurations to the SQuAD dataset?
