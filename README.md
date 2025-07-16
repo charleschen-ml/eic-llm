@@ -1,7 +1,7 @@
 ## Efficient LLMs via Switchable and Dynamic Quantization
 
 ### Overview
-- Use quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time.
+- The goal of this project is to use quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time. The robustness against adversarial attacks is also evaluated with this training scheme.
 
 ### Code Structure
 
@@ -85,14 +85,17 @@ Observations & Insights
 
 #### [Step 6] Does this phenomenon align with the observations in Double-Win Quant (ICML’21)? If not, what could be the potential reasons?
 - In ICML’21, the authors found that  
-  - Low-precision models (e.g. 8-bit) were more robust to adversarial perturbations than full-precision (32-bit) ones  
-  - The explanation was that quantization induces gradient masking or saturation, which makes it harder for attackers to find effective perturbations  
+  - Adversarial examples generated at one precision (e.g., 8-bit) often fail to transfer to the same model at a different precision (e.g., 4-bit), despite sharing weights.
+  - Based on this, they proposed Random Precision Training (RPT) and Random Precision Inference (RPI) to improve adversarial robustness, achieving both robustness and efficiency — hence the “double win.”
+  - RPT randomly selects a precision and applies it uniformly at each training step, whereas RPI randomly applies a uniform precision per prompt at inference time.
 - Adversarial attack candidates  
-  - Simple: Replace common words with typos (used in my experiment)  
+  - PGD: Gradient-based vision model attacks used in ICML'21
   - LM-attack: dependency issues  
-  - Textfooler: works only with LM’s with classification heads  
+  - Textfooler: works only with LM’s with classification heads
+  - Text-based: Replace common words with typos (selected for use in my experiment) 
 - Below shows the accuracy scores after adversarial attack.  
-  - The accuracy scores degraded significantly under attack. Interestingly though, the trend remained similar to previously unattacked scores. This could be due to differences between vision and language modeling.
+  - The accuracy scores degraded significantly under attack. Interestingly though, the trend remained similar to previously unattacked scores.
+  - DWQ's defense is designed to break gradient-based attacks trained at a specific precision like PGD. In our case on the contrary, the adversarail attack is text-based rather than gradient-based, thus introducing different responses to the attacks. 
 <p align="center">
   <img src="images/adversary-em.png" alt="adversary-em" width="400"/>
   <img src="images/adversary-f1.png" alt="adversary-f1" width="400"/>
