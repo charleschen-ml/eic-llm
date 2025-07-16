@@ -263,7 +263,13 @@ def main(script_args, training_args, model_args, inference_args):
 
     print("\nAFTER TRAINING:\n")
 
+    USE_RPI = True # random precision inference (for adversarial robustness eval)
     for example in tqdm(dataset, desc="Evaluating", disable=True):
+
+        if USE_RPI:
+            rpi_bit = random.choice(inference_args.bit_choices)
+            set_active_bitwidths(model=base_model, bit_config_dict={}, default_bit=rpi_bit)
+
         context = example["context"].strip()
         question = example["question"].strip()
         qid = example.get("id", f"id_{len(predictions)}")
