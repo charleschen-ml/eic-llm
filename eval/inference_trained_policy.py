@@ -263,7 +263,7 @@ def main(script_args, training_args, model_args, inference_args):
 
     print("\nAFTER TRAINING:\n")
 
-    USE_RPI = True # random precision inference (for adversarial robustness eval)
+    USE_RPI = False # random precision inference (for adversarial robustness eval)
     if USE_RPI:
         print("RPI enabled")
     for example in tqdm(dataset, desc="Evaluating", disable=True):
