@@ -1,11 +1,13 @@
 ## Efficient LLMs via Switchable and Dynamic Quantization
 
 ### Overview
+- Use quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time.
 
 ### Code Structure
 
 - Training/qat.py: Quantization-aware training (QAT)
 - Eval/inference_trained_policy.py: Inference fine-tuned model
+- Colab: <a href="https://colab.research.google.com/drive/1bJHCr-zC6V6rtV8c_sytuTnsHRPR5hrU?usp=drive_link">eic-llm</a>
 
 ### Deliverables
 
@@ -53,11 +55,14 @@
 
 #### [Step 5] Does this phenomenon align with the observations in CPT (ICLR’21)? If not, what could be the potential reasons?
 - Instead of static training (4, 8, 16, 32, 4, 8, 16, 32, …) we perform CPT training (4, 8, 16, 32, 16, 8, 4, 8, 16, 32, …)  
-- In the graphs below, we can see cyclic performs slightly better at 8 and 16-bit while performing worse at 32-bit. This is due to CPT having more training iterations at 8 and 16 bits for a given training window.  
-- The below heat map shows the  accuracy score achieved  using CPT. As can be shown, the scores are worse across the board compared to the static training used previously.
+- In the graphs below, we can see cyclic performs slightly better at 8 and 16-bit while performing worse at 32-bit. This is due to CPT having more training iterations at 8 and 16 bits for a given training window.
 <p align="center">
   <img src="images/static-vs-cyclic-em.png" alt="static-vs-cyclic-em" width="400"/>
   <img src="images/static-vs-cyclic-f1.png" alt="static-vs-cyclic-f1.png" width="400"/>
+</p>
+- The below heat map shows the  accuracy score achieved  using CPT. As can be shown, the scores are worse across the board compared to the static training used previously.
+<p align="center">
+  <img src="images/heatmap-cpt.png" alt="heatmap-cpt" width="800"/>
 </p>
 
 ---
