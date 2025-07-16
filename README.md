@@ -50,7 +50,7 @@ Greedy quantization
 - Layers flipped to 4 bits:  
   - h.11.attn.c_attn
 
-Insights
+Observations & Insights
 - Fine-grained, submodule-wise quantization outperforms coarse, layer-wise quantization due to the course method simultaneously quantizing all submodules regardless of their quantization sensitivity.
 - From the course quantization experiment, we can see that:
   - All layers are pretty sensitive relative to the full-precision score of 34.
