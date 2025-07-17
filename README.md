@@ -83,7 +83,8 @@ Observations & Insights
   <img src="images/static-vs-cyclic-em.png" alt="static-vs-cyclic-em" width="400"/>
   <img src="images/static-vs-cyclic-f1.png" alt="static-vs-cyclic-f1.png" width="400"/>
 </p>
-- The below heat map shows the  accuracy score achieved  using CPT. As can be shown, the scores are worse across the board compared to the static training used previously.
+
+- The heatmap below shows the  accuracy score achieved  using CPT. As can be shown, the scores are worse across the board compared to the static training used previously.
 <p align="center">
   <img src="images/heatmap-cpt.png" alt="heatmap-cpt" width="800"/>
 </p>
