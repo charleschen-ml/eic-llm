@@ -46,11 +46,11 @@ Fine-grained, submodule-wise quantization
 #### [Step 4] How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
 
 To determine optimal bit-widths, we use a *greedy inference* strategy that incrementally reduces precision while monitoring task accuracy. Two configurations were evaluated:
-- Greedy Config #1:
+- <b>Greedy Config #1</b>:
   - Default to 32 bits, then cumulatively flip each submodule to 4-bit. If score >=28, keep the flip, otherwise unflip back to 32.
   - Submodules are flipped in descending order, starting from the least sensitive (transformer.h.11.attn.c_attn shown in the heatmap above) to the most sensitive.
   - Final EM = 28, Memory savings = 6.6%  
-- Greedy Config #2:
+- <b>Greedy Config #2</b>:
   - Default to 16 bits, then cumulatively flip each submodule (from least sensitive to most sensitive) to 8-bit. If score >=32, keep the flip, otherwise unflip back to 16.
   - Final EM = 33, Memory savings = 36.3%  
 <p align="center">
@@ -71,8 +71,8 @@ Observations & Insights
 ---
 
 #### [Step 4] A motivation behind switchable quantization is to support diverse layer-wise quantization configurations simultaneously, accommodating different resource allocation needs. Could you suggest additional training objectives that could more effectively facilitate the mechanism for switching quantization bit-widths?
-- Specialized training for sensitive submodules: in my current (generic) QAT training, I set all layers to a uniform quantization. We could quantize only one or few sensitive layers and run additional training cycles with that.  
-- Dropout training (similar conceptually but opposite of specialized training): quantize every layer except for a few dropout layers during trainning
+- Specialized training: Focus the training effort on one or more sensitive layers to improve low-precision performance. This contrasts with the current QAT scheme, which applies uniform precision across all layers. 
+- Stochastic dropout-style training: Randomly hold out one or more layers from quantization during each training step to encourage robustness to bit-width variation.
 
 ---
 
