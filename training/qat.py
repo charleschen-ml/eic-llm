@@ -89,35 +89,18 @@ def get_static_bitwidth(step, bit_choices):
     bit_index = step % len(bit_choices)
     return bit_choices[bit_index]
 
-# Symmetric min-max quantization
-# def quantize_tensor(tensor, num_bits=4) -> object:
-#     device = tensor.device # capture tensor device (gpu)
-#     max_val = tensor.abs().max()
-#     scale = max_val / (2 ** (num_bits - 1) - 1)
-#     tensor_quant = torch.round(tensor / scale).clamp(
-#         min=-(2 ** (num_bits - 1)), max=2 ** (num_bits - 1) - 1
-#     )
-#     tensor_dequant = tensor_quant * scale
-#     return tensor_dequant.to(device) # move tensor to gpu
-
 def quantize_tensor(tensor, num_bits=4):
     device = tensor.device
-    # Detach scale to avoid backprop through it
     max_val = tensor.detach().abs().max()
     scale = max_val / (2 ** (num_bits - 1) - 1)
-
-    # Fake quantization using STE (straight-through estimator)
     quant = torch.round(tensor / scale).clamp(
         min=-(2 ** (num_bits - 1)), max=2 ** (num_bits - 1) - 1
     )
     dequant = quant * scale
     return dequant.to(device)
 
+# Precompute quantized weights
 def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_layers):
-    """
-    For each nn.Linear layer, store quantized weights for multiple bit-widths
-    and use a runtime flag to choose the active one.
-    """
     for name, module in model.named_modules():
         if not any(name.startswith(f"transformer.h.{i}.") for i in quant_layers):
             continue
@@ -130,26 +113,12 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_l
                 q_w = quantize_tensor(w, num_bits=b)
                 
                 # Print quantized stats
-                w_mean = w.mean().item()
-                q_w_mean = q_w.mean().item()
                 mean_diff = (w - q_w).abs().mean().item()
                 max_val = w.max().item()
                 min_val = w.min().item()
-                w_flat = w.flatten()
-                q_w_flat = q_w.flatten()
-                pos_w_mean = w_flat[w_flat > 0].mean().item() if (w_flat > 0).any() else 0.0
-                neg_w_mean = w_flat[w_flat < 0].mean().item() if (w_flat < 0).any() else 0.0
-                pos_qw_mean = q_w_flat[q_w_flat > 0].mean().item() if (q_w_flat > 0).any() else 0.0
-                neg_qw_mean = q_w_flat[q_w_flat < 0].mean().item() if (q_w_flat < 0).any() else 0.0
                 if USE_DEBUG:
                     print(
                         f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Max abs weight before: {max_val:.4f} | Min abs weight before: {min_val:.4f}")
-                # print(f"[Quantize] {name} | Bits: {b} | Mean abs diff: {mean_diff:.6f} | Min: {min_val:.6f} | Max: {max_val:.6f}")
-                # print(f"[Quantize] {name} | Mean weight before: {w_mean:.4f} | Mean quantized weight: {q_w_mean:.4f}")
-                # print(f"[Quantize] {name} | Avg pos before: {pos_w_mean:.4f} | Avg neg before: {neg_w_mean:.4f}")
-                # print(f"[Quantize] {name} | Avg pos quant:  {pos_qw_mean:.4f} | Avg neg quant:  {neg_qw_mean:.4f}")
-                # print(f"[Quantize] {name} | First 10 elements (original):  {w_flat[:10].tolist()}")
-                # print(f"[Quantize] {name} | First 10 elements (quantized): {q_w_flat[:10].tolist()}")
 
                 # Store precomputed quantized weights
                 module._quantized_weights[b] = q_w
@@ -157,14 +126,15 @@ def patch_linear_forward_with_switchable_quantization(model, bit_widths, quant_l
             module._active_bit = bit_widths[0]  # set default
             module._bit_choices = bit_widths
 
+# Set default and override bitwidths
 def set_active_bitwidths(model, bit_config_dict, default_bit=32):
-    print(f"\n[set_active] bit_config_dict = {bit_config_dict} | default_bit = {default_bit}")  # debug
+    print(f"\n[set_active] bit_config_dict = {bit_config_dict} | default_bit = {default_bit}")
     for name, module in model.named_modules():
         if isinstance(module, (nn.Linear, Conv1D)) and hasattr(module, "_quantized_weights"):
             # Default bit for all layers
             module._active_bit = default_bit
 
-            # Check each configuration pattern
+            # Overrides
             for pattern, bit in bit_config_dict.items():
                 if pattern in name:
                     module._active_bit = bit
@@ -172,14 +142,6 @@ def set_active_bitwidths(model, bit_config_dict, default_bit=32):
 
 # Define custom forward, which creates lora at runtime
 def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
-    # # Freeze all layers by default
-    # for param in model.parameters():
-    #     param.requires_grad = False
-    #
-    # # Workaround: Set requires_grad = True for WTE layer required for gradient flow
-    # # Weight updates to this layer is later disabled to train only lora layers
-    # model.transformer.wte.weight.requires_grad = True  # required to avoid loss.requires_grad = False
-    # model.lm_head.weight.requires_grad = True # optional
 
     for name, module in model.named_modules():
         # Unfreeze LoRA adapter weights listed in QUANT_LAYERS
@@ -211,22 +173,12 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                 input = input[0] if isinstance(input, tuple) else input # to remove
 
                 # Compute base output (no lora, using base, quantized weights)
-                # weight = self._quantized_weights[self._active_bit] # load quantized weights
-                # weight = self.weight # load base weights
-                weight = quantize_tensor(self.weight, num_bits=self._active_bit)
-                weight = weight.T
-                # weight_base = weight_base.T
+                # weight = self._quantized_weights[self._active_bit] # debug: load *static* quantized weights
+                # weight = self.weight # debug: load base weights
+                weight = quantize_tensor(self.weight, num_bits=self._active_bit) # quantize *backpropped* self.weight
+                weight = weight.T # transpose
                 bias = self.bias # load bias
                 output = F.linear(input, weight, bias) # compute output = input * weight.T + bias
-
-                # Debug
-                # output_original = self._original_forward(input)
-                # output_custom = output
-                # print(f"\nlayer {getattr(self, '_layer_name', '(unknown)')}")
-                # print("➡️ Output original (first 1–2 values):", output_original.view(-1)[:2])
-                # print("➡️ Output custom   (first 1–2 values):", output_custom.view(-1)[:2])
-                # diff = (output_original - output_custom).abs().mean().item()
-                # print(f"🧮 Mean absolute diff: {diff:.6f}")
 
                 # Lazy init LoRA adapters at runtime
                 if not hasattr(self, "_lora_adapters") or not self._lora_adapters: # if lora doesn't exist yet
@@ -238,11 +190,10 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         lora_up = nn.Linear(r, out_features, bias=False).to(input.device)
                         nn.init.kaiming_uniform_(lora_down.weight, a=math.sqrt(5)) # 7/7: lora init kick start
                         nn.init.zeros_(lora_up.weight) # 7/7: lora init kick start
-                        # nn.init.kaiming_uniform_(lora_up.weight, a=math.sqrt(5)) # 7/9: non-zero init
                         self._lora_adapters[str(b)] = nn.Sequential(lora_down, lora_up)
                         # print(f"[bitwise_lora] Created lora for layer {self._layer_name} | {b} bits")
 
-                USE_LORA = True
+                USE_LORA = True # flag for debugging
                 if USE_LORA:
                     # Compute lora and add to base output (if adapters exist)
                     if hasattr(self, "_lora_adapters") and bit_key in self._lora_adapters:
@@ -250,9 +201,9 @@ def add_bitwise_lora_adapters(model, bit_widths, quant_layers):
                         try:
                             lora_out = lora(input)
                             output = output + alpha / r * lora_out # vanilla lora
-                            # ✅ Monitor LoRA learning for a specific layer
+
+                            # Monitor LoRA learning for a specific layer in wandb
                             if self._layer_name == "transformer.h.11.mlp.c_fc":
-                                lora[0]
                                 lora_up = lora[1]
                                 if wandb.run is not None:
                                     wandb.log({
@@ -302,28 +253,14 @@ class BitwidthSchedulingCallback(TrainerCallback):
                 print(f"[CyclicBitwidth] Step {self.step_count}: Using {current_bit}-bit quantization")
             
             set_active_bitwidths(self.model, bit_config)
-        # elif self.bitwidth_schedule == "random": # To remove: per LAYER random bit assignment
-        #     # Use random bit-width assignment (original behavior)
-        #     bit_config = {}
-        #     for name, module in self.model.named_modules():
-        #         if hasattr(module, "_quantized_weights") and "lm_head" not in name:
-        #             chosen_bit = random.choice(self.bit_choices)
-        #             bit_config[name] = chosen_bit
-        #     set_active_bitwidths(self.model, bit_config)
-        elif self.bitwidth_schedule == "random": # per SUBMODULE random bit assignment
-            # Assign a random bit-width to each submodule individually
+        elif self.bitwidth_schedule == "random": # random, uniform bit assignment
             bit_config = {}
+            chosen_bit = random.choice(self.bit_choices) # uniform bit assignment
             for name, module in self.model.named_modules():
                 if hasattr(module, "_quantized_weights") and "lm_head" not in name:
-                    # For modules that have quantized submodules, assign random bits per submodule
-                    for subname, submodule in module.named_parameters(recurse=False):
-                        full_name = f"{name}.{subname}"
-                        chosen_bit = random.choice(self.bit_choices)
-                        bit_config[full_name] = chosen_bit
-                    # If needed, also assign to the main module itself
-                    bit_config[name] = random.choice(self.bit_choices)
+                    bit_config[name] = chosen_bit
             set_active_bitwidths(self.model, bit_config)
-        else:
+        else: # "static"
             bit_config = {}
             current_bit = get_static_bitwidth(
                 self.step_count, 
@@ -341,60 +278,6 @@ def sft_preprocess(example, tokenizer):
     return {
         "text": example["context"].strip() + "\n" + example["question"].strip() + "\n" + answer + tokenizer.eos_token
     }
-
-# This class serves 2 purposes:
-# 1. Workaround to disable gradient updates to the WTE layer while keeping gradient_required = True
-# 2. Log grad norms to compare update strengths of WTE vs Lora
-# class SFTTrainerWithGradLoggingNoWTE(SFTTrainer):
-#     def training_step(self, model, inputs, num_steps_in_batch):
-#         import wandb # needs to be here unfortunately
-#         model.train()
-#         inputs = self._prepare_inputs(inputs)
-#         loss = self.compute_loss(model, inputs)
-#         loss.backward()
-#
-#         # 🔍 Grad norm logging
-#         try:
-#             wte_norm = model.transformer.wte.weight.grad.norm().item()
-#             lora_norms = []
-#             for name, param in model.named_parameters():
-#                 if "lora" in name and param.grad is not None:
-#                     lora_norm = param.grad.norm().item()
-#                     lora_norms.append(lora_norm)
-#
-#                     # ✅ Log individual grad norms to wandb
-#                     wandb.log({
-#                         f"lora/{name}/grad_norm": lora_norm
-#                     })
-#             avg_lora_norm = sum(lora_norms) / len(lora_norms) if lora_norms else 0.0
-#             # print(f"🧠 Grad Norms | wte: {wte_norm:.4f} | avg lora: {avg_lora_norm:.4f}")
-#         except Exception as e:
-#             print(f"[Grad Logging] Error: {e}")
-#
-#         return loss.detach()
-#
-#     def create_optimizer(self):
-#         if self.optimizer is not None:
-#             return self.optimizer
-#
-#         # Filter out 'wte' from optimizer param groups
-#         decay_params = []
-#         no_decay_params = []
-#         for name, param in self.model.named_parameters():
-#             if not param.requires_grad or "wte" in name:
-#                 continue
-#             if any(nd in name for nd in ["bias", "LayerNorm.weight"]):
-#                 no_decay_params.append(param)
-#             else:
-#                 decay_params.append(param)
-#
-#         grouped_params = [
-#             {"params": decay_params, "weight_decay": self.args.weight_decay},
-#             {"params": no_decay_params, "weight_decay": 0.0},
-#         ]
-#
-#         self.optimizer = AdamW(grouped_params, lr=self.args.learning_rate)
-#         return self.optimizer
 
 def main(script_args, training_args, model_args, qat_args):
     """
@@ -527,14 +410,6 @@ def main(script_args, training_args, model_args, qat_args):
         callbacks = callbacks
     )
 
-    # Debug why lm_head is not trainable
-    # trainer.create_optimizer()
-    # print("lm_head type:", type(model.lm_head))
-    # print("lm_head weight requires_grad:", model.lm_head.weight.requires_grad)
-    # print("lm_head in optimizer?",
-    #       any(id(p) == id(model.lm_head.weight) for g in trainer.optimizer.param_groups for p in g["params"]))
-    # print("lm_head and wte shared?", model.lm_head.weight is model.transformer.wte.weight)
-
     # Print trainable parameters before training
     for name, param in model.named_parameters():
         if param.requires_grad:
@@ -562,14 +437,6 @@ def main(script_args, training_args, model_args, qat_args):
     # Train
     trainer.train()
 
-    # 🔍 Confirm wte is excluded from optimizer
-    # wte_ref = model.transformer.wte.weight
-    # wte_found = any(p is wte_ref for g in trainer.optimizer.param_groups for p in g["params"])
-    # if wte_found:
-    #     print("🚨 wte IS in optimizer! (unexpected)")
-    # else:
-    #     print("✅ wte is NOT in optimizer — LoRA-only training confirmed.")
-
     # Save and push to hub
     trainer.save_model(training_args.output_dir)
     if qat_args.use_bitwise_lora:
@@ -579,7 +446,6 @@ def main(script_args, training_args, model_args, qat_args):
         torch.save(model.state_dict(), qat_args.adapter_path)
     if training_args.push_to_hub:
         trainer.push_to_hub(dataset_name=script_args.dataset_name)
-
 
 def make_parser(subparsers: argparse._SubParsersAction = None):
     dataclass_types = (ScriptArguments, SFTConfig, ModelConfig)
