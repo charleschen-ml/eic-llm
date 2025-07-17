@@ -94,7 +94,7 @@ Our results diverge from CPT (ICLR’21), which showed accuracy gains from cycli
 
 Potential reasons include:
 - The original CPT was developed for CNNs and encoder-style Transformers, while our model is a large causal LLM.
-- Our training setup uses shared embedding and language model head layers across different bitwidths. This contrasts with CPT where the authors used independent model weights.
+- Our training setup uses shared embedding and language model head layers across different bitwidths. This contrasts with CPT where independent model weights were used for each bitwidth.
 
 ---
 
