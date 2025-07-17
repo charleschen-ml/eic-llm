@@ -1,3 +1,5 @@
+# QAT training
+
 import argparse
 import torch
 import torch.nn as nn
@@ -52,7 +54,7 @@ class QATArguments:
 # Settings
 r = 16  # LoRA rank
 alpha = 32 # LoRA alpha
-USE_DEBUG = False
+USE_DEBUG = False # Debug prints
 
 def get_cyclic_bitwidth(step, bit_choices, repeat_per_bit=1):
     """

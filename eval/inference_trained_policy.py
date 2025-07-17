@@ -41,7 +41,7 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # To fix torch deterministic e
 torch.use_deterministic_algorithms(True)
 
 # Settings
-USE_DEBUG = False
+USE_DEBUG = False # Debug prints
 
 # Custom arguments for inference-specific parameters
 class InferenceArguments:
