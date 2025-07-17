@@ -1,7 +1,7 @@
 ## Efficient LLMs via Switchable and Dynamic Quantization
 
 ### Overview
-- The goal of this project is to apply quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time. Our best configuration achieves EM = 33 (vs. 34 full-precision) with 36.3% memory savings. In addition, we evalauate the robustness against adversarial attacks under different precision schemes.
+- The goal of this project is to apply quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal language models at inference time. Our best configuration achieves EM = 33 (vs. 34 full-precision) with 36.3% memory savings. In addition, we evalauate the robustness against adversarial attacks under different precision schemes.
 
 ### Code Structure
 
