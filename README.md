@@ -58,8 +58,8 @@ To determine optimal bit-widths, we use a *greedy inference* strategy that incre
 </p> 
 
 Observations & Insights
-- Fine-grained, submodule-wise quantization outperforms coarse, layer-wise quantization due to the course method simultaneously quantizing all submodules regardless of their quantization sensitivity.
-- From the course quantization experiment, we can see that:
+- Fine-grained, submodule-wise quantization outperforms coarse, layer-wise quantization due to the coarse method simultaneously quantizing all submodules regardless of their quantization sensitivity.
+- From the coarse quantization experiment, we can see that:
   - All layers are pretty sensitive relative to the full-precision score of 34.
   - Layers 2, 7, 8, 10, 11 are relatively less sensitive (minimum of 7% performance hit).
   - Earlier transformer layers (especially layer 0) are more sensitive.
