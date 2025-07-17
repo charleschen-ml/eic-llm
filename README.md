@@ -1,7 +1,7 @@
 ## Efficient LLMs via Switchable and Dynamic Quantization
 
 ### Overview
-- The goal of this project is to apply quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time. In addition, we evalauate the robustness against adversarial attacks under different precision schemes.
+- The goal of this project is to apply quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time. Our best configuration achieves EM = 33 (vs. 34 full-precision) with 36.3% memory savings. In addition, we evalauate the robustness against adversarial attacks under different precision schemes.
 
 ### Code Structure
 
@@ -77,8 +77,9 @@ Observations & Insights
 ---
 
 #### [Step 5] Does this phenomenon align with the observations in CPT (ICLR’21)? If not, what could be the potential reasons?
-- Instead of static training (4, 8, 16, 32, 4, 8, 16, 32, …) we perform CPT training (4, 8, 16, 32, 16, 8, 4, 8, 16, 32, …)  
-- In the graphs below, we can see cyclic performs slightly better at 8 and 16-bit while performing worse at 32-bit. This is due to CPT having more training iterations at 8 and 16 bits for a given training window.
+- In ICLR'21, the authors changed the training precision in a cyclical (sawtooth) manner and observed higher accuracy. CPT mimics cyclical learning rates that achieves the balance between exploration (low precision) and convergence (high precision). 
+- To determine whether same phenomenon applies to our experiment, we perform CPT (4, 8, 16, 32, 16, 8, 4, 8, 16, 32, …) instead of static training (4, 8, 16, 32, 4, 8, 16, 32, …).
+- From the graphs below, we observe that CPT slightly improves the performance at mid-precision (8 and 16-bit) while exhibiting lower scores at 32-bit. This is due to CPT having more training iterations at 8 and 16 bits for a given training window.
 <p align="center">
   <img src="images/static-vs-cyclic-em.png" alt="static-vs-cyclic-em" width="400"/>
   <img src="images/static-vs-cyclic-f1.png" alt="static-vs-cyclic-f1.png" width="400"/>
@@ -88,6 +89,12 @@ Observations & Insights
 <p align="center">
   <img src="images/heatmap-cpt.png" alt="heatmap-cpt" width="800"/>
 </p>
+
+Our results diverge from CPT (ICLR’21), which showed accuracy gains from cyclic precision schedules. In contrast, we observed a degradation in task accuracy when applying CPT to GPT-2 on SQuAD.
+
+Potential reasons include:
+- The original CPT was developed for CNNs and encoder-style Transformers, while our model is a large causal LLM.
+- Our training setup uses shared embedding and language model head layers across different bitwidths. This contrasts with CPT where the authors used independent model weights.
 
 ---
 
@@ -103,7 +110,7 @@ Observations & Insights
   - Text-based: Replace common words with typos (selected for use in my experiment) 
 - The graphs below shows the accuracy scores after adversarial attack:  
   - The solid curve shows the accuracy scores with fixed-precision inference, whereas the dashed line shows the score with random-precision inference. The resulting accuracy score with RPI enabled is somewhere between 4-bit and 8-bit precision.
-  - This shows contrary findings compared to that shown in ICML'21. One possible explanation is that DWQ's defense is designed to break gradient-based attacks trained at a specific precision like PGD. In our case, the adversarail attack is text-based, which is not tied to a specific precision, reducing the robustness improvement from RPT or RPI. 
+  - Our experiment diverges from DWQ in both attack type and quantization strategy. DWQ observed strong robustness gains due to precision-specific gradient attacks (e.g., PGD), while our text-based perturbation attack is not precision-specific, likely reducing the effectiveness of RPI.
 <p align="center">
   <img src="images/adversary-em-rpi.png" alt="adversary-em-rpi" width="400"/>
   <img src="images/adversary-f1-rpi.png" alt="adversary-f1-rpi" width="400"/>
@@ -112,4 +119,6 @@ Observations & Insights
 ---
 
 #### Based on your explorations of switchable and dynamic quantization, could you propose some promising research directions or questions for further integrating them with LLMs?
-- My current implementation effectively trains different lora modules independently for different bit-width configurations. Modifying the loss function to become the average of the loss over all bit-widths may help the language model learn to generalize better and therefore achieve a higher accuracy score. Implementing teacher distillation by baking in the loss between 4-bit and 32-bit can also help to improve learning for the 4-bit configurations.
+- Train LoRA modules jointly using a unified loss over all target bit-widths
+- Introduce cross-bitwidth distillation loss (e.g., 32-bit teacher supervising 4-bit)
+- Create a gradient-based, causal-LM adversarial attack to evaluate whether the robustness improves with QAT training
