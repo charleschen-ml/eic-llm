@@ -119,8 +119,8 @@ Potential reasons include:
 ---
 
 #### Based on your explorations of switchable and dynamic quantization, could you propose some promising research directions or questions for further integrating them with LLMs?
-- Use InstantNet-style, cascade distillation loss (CDT) to improve lower-bitwidth lora training. This involves implementing a loss function that not only minimizes the cross-entropy loss, but also the distillation loss from all higher bits. Only base model weights (but no lora) were trained in this paper.
-- Use a switchable-precision neural architecture search (also in InstantNet) to dynamically find the network configuration alpha that strikes the optimal balance between evaluation loss and network efficiency. In this work, a static greedy inference was used due to time constraints.
+- Use InstantNet-style, cascade distillation loss (CDT) to improve lower-bitwidth lora training. This involves implementing a loss function that not only minimizes the cross-entropy loss, but also the distillation loss from all higher bits. Only base model weights (but no lora) were trained in InstantNet.
+- Use a switchable-precision neural architecture search (also in InstantNet) to dynamically find the network configuration alpha that strikes the optimal balance between evaluation loss and network efficiency. In our work, a static greedy inference was used due to time constraints.
 - Train LoRA modules jointly using a unified loss over all target bit-widths
 - Introduce cross-bitwidth distillation loss (e.g., 32-bit teacher supervising 4-bit)
 - Create a gradient-based, causal-LM adversarial attack to evaluate whether the robustness improves with QAT training
