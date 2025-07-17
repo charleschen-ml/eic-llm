@@ -1,26 +1,26 @@
 ## Efficient LLMs via Switchable and Dynamic Quantization
 
 ### Overview
-- The goal of this project is to use quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time. In addition, the robustness against adversarial attacks is evaluated with this training scheme.
+- The goal of this project is to apply quantization-aware training (QAT) to improve the accuracy-efficiency tradeoff of causal large-language models at inference time. In addition, we evalauate the robustness against adversarial attacks under different precision schemes.
 
 ### Code Structure
 
-- training/qat.py: Quantization-aware training (QAT)
-- eval/inference_trained_policy.py: Inference fine-tuned model
-- attacks/prep_attack.py: generate attacked input
-- Colab: <a href="https://colab.research.google.com/drive/1bJHCr-zC6V6rtV8c_sytuTnsHRPR5hrU?usp=drive_link">eic-llm</a>
+- training/qat.py: Implements quantization-aware training (QAT)
+- eval/inference_trained_policy.py: Runsinference on the fine-tuned model
+- attacks/prep_attack.py: Generates adversarially perturbed inputs
+- Colab: <a href="https://colab.research.google.com/drive/1bJHCr-zC6V6rtV8c_sytuTnsHRPR5hrU?usp=drive_link">Google Colab Notebook</a>
 
 ### Deliverables
 
 #### [Step 4] What is the task accuracy achieved after applying various quantization bit-width configurations to the SQuAD dataset?
-Several methods were applied to evaluate the task accuaracy:
+We evaluate model performance under three granularity levels of quantization control::
 - <b>Uniform quantization</b>: Same bitwidth across all layers and submodules
 - <b>Coarse, layer-wise quantization</b>: 12 layers total (h.0 - h.11)  
 - <b>Fine-grained, submodule-wise quantization</b>: 48 submodules total = 4 submodules / layer x 12 layers = 48 submodules
 
 Uniform quantization
 - This simple quantization method provides us with high-level insights on quantization sensitivity.
-- The best accuracy score of 34 and 44 (EM and F1, respectively) is achieved at 32-bit (full-precision).
+- The best accuracy score of 34 and 44 (EM and F1, respectively) is achieved at 32-bit. This score is also used as the full-precision reference.
 - As we reduce the bitwidth, accuracy reduces while memory saving improves.
 - The optimal point for accuracy-efficiency tradeoff is where the two curves cross each other at 8-bit. Using this configuration, we achieve substantial memory saving while maintaining close to full-precision task accuracy.
 - In general, QAT allows for dynamic bitwidth configuration at inference time based on the desired accuracy and available compute resources.
@@ -45,7 +45,7 @@ Fine-grained, submodule-wise quantization
 
 #### [Step 4] How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
 
-*Greedy Inference* was used to determine the optimal quantization bit-width. Two configurations were evaluated:
+To determine optimal bit-widths, we use a *greedy inference* strategy that incrementally reduces precision while monitoring task accuracy. Two configurations were evaluated:
 - Greedy Config #1:
   - Default to 32 bits, then cumulatively flip each submodule to 4-bit. If score >=28, keep the flip, otherwise unflip back to 32.
   - Submodules are flipped in descending order, starting from the least sensitive (transformer.h.11.attn.c_attn shown in the heatmap above) to the most sensitive.
@@ -66,7 +66,7 @@ Observations & Insights
 - From the fine quantization experiment, we can see that:
   - MLP submodules (especially c_fc) are more sensitive than attention layers.
   - Projection submodules are less sensitive.
-- Greedy config #2 offers both high accuracy (EM = 33) and high efficiency (memory savings = 36.3%).
+- <b>Greedy config #2</b> achieves a strong balance between accuracy (EM = 33) and efficiency (36.3% memory savings).
 
 ---
 
