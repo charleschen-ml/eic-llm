@@ -45,7 +45,7 @@ Fine-grained, submodule-wise quantization
 
 #### [Step 4] How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
 
-Greedy Inference
+*Greedy Inference* was used to determine the optimal quantization bit-width. Two configurations were evaluated:
 - Greedy Config #1:
   - Default to 32 bits, then cumulatively flip each submodule to 4-bit. If score >=28, keep the flip, otherwise unflip back to 32.
   - Submodules are flipped in descending order, starting from the least sensitive (transformer.h.11.attn.c_attn shown in the heatmap above) to the most sensitive.
@@ -66,6 +66,7 @@ Observations & Insights
 - From the fine quantization experiment, we can see that:
   - MLP submodules (especially c_fc) are more sensitive than attention layers.
   - Projection submodules are less sensitive.
+- Greedy config #2 offers both high accuracy (EM = 33) and high efficiency (memory savings = 36.3%).
 
 ---
 
