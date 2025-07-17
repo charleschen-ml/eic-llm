@@ -46,9 +46,12 @@ Fine-grained, submodule-wise quantization
 #### [Step 4] How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
 
 Greedy Inference
-- Greedy Config #1: Default to 32 bits, then cumulatively flip each submodule to 4-bit. If score >=28, keep the flip, otherwise unflip back to 32.
+- Greedy Config #1:
+  - Default to 32 bits, then cumulatively flip each submodule to 4-bit. If score >=28, keep the flip, otherwise unflip back to 32.
+  - Submodules are flipped in descending order, starting from the least sensitive (transformer.h.11.attn.c_attn shown in the heatmap above) to the most sensitive.
   - Final EM = 28, Memory savings = 6.6%  
-- Greedy Config #2: Default to 16 bits, then cumulatively flip each submodule to 8-bit. If score >=32, keep the flip, otherwise unflip back to 16.
+- Greedy Config #2:
+  - Default to 16 bits, then cumulatively flip each submodule (from least sensitive to most sensitive) to 8-bit. If score >=32, keep the flip, otherwise unflip back to 16.
   - Final EM = 33, Memory savings = 36.3%  
 <p align="center">
   <img src="images/greedy.png" alt="greedy.png" width="400"/>
