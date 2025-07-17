@@ -45,11 +45,14 @@ Fine-grained, submodule-wise quantization
 
 #### [Step 4] How did you determine the optimal quantization bit-width configurations? Have you gleaned any insights from your observations that could guide future work to further enhance performance?
 
-Greedy quantization
-- Default all submodules to 32 bits, then flip submodule by submodule to 4-bit, and stop when EM score <= 31 (10% hit on accuracy)  
-- Final EM = , F1 =, Memory savings = %  
-- Layers flipped to 4 bits:  
-  - h.11.attn.c_attn
+Greedy Inference
+- Greedy Config #1: Default to 32 bits, then cumulatively flip each submodule to 4-bit. If score >=28, keep the flip, otherwise unflip back to 32.
+  - Final EM = 28, Memory savings = 6.6%  
+- Greedy Config #2: Default to 16 bits, then cumulatively flip each submodule to 8-bit. If score >=32, keep the flip, otherwise unflip back to 16.
+  - Final EM = 33, Memory savings = 36.3%  
+<p align="center">
+  <img src="images/greedy.png" alt="greedy.png" width="400"/>
+</p> 
 
 Observations & Insights
 - Fine-grained, submodule-wise quantization outperforms coarse, layer-wise quantization due to the course method simultaneously quantizing all submodules regardless of their quantization sensitivity.
