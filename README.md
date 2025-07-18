@@ -31,12 +31,14 @@ Uniform quantization
 
 Coarse, layer-wise quantization
 - All layers are 32 bits by default, and one layer is switched to 4 bit at a time to determine the layer-wise quantization sensitivity
+- The highest scores are 27 and 39.4 for EM and F1, respectively, when we quantize layer 2 only.
 <p align="center">
   <img src="images/layer-wise-quant.png" alt="layer wise quant" width="300"/>
 </p>
 
 Fine-grained, submodule-wise quantization  
 - All submodules are 32 bits by default, and one submodule is switched to 4 bit at a time to determine the layer-wise quantization sensitivity.
+- The highest scores are 37 and 46.7 for EM and F1, respectively, when we quantize the submodule transformer.h.11.attn.c_attn only.
 <p align="center">
   <img src="images/heatmap-static.png" alt="heatpmap static" width="800"/>
 </p>
