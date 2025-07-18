@@ -77,7 +77,7 @@ Observations & Insights
 ---
 
 #### [Step 5] Does this phenomenon align with the observations in CPT (ICLR’21)? If not, what could be the potential reasons?
-- In ICLR'21, the authors changed the training precision in a cyclical (sawtooth) manner and observed higher accuracy. CPT mimics cyclical learning rates that achieves the balance between exploration (low precision) and convergence (high precision). 
+- In ICLR'21, the authors changed the training precision in a cyclical (sawtooth) manner and observed higher accuracy. CPT mimics cyclical learning rates that achieves the balance between exploration (low precision) and fine-grained learning (high precision). 
 - To determine whether same phenomenon applies to our experiment, we perform CPT (4, 8, 16, 32, 16, 8, 4, 8, 16, 32, …) instead of static training (4, 8, 16, 32, 4, 8, 16, 32, …).
 - From the graphs below, we observe that CPT slightly improves the performance at mid-precision (8 and 16-bit) while exhibiting lower scores at 32-bit. This is due to CPT having more training iterations at 8 and 16 bits for a given training window.
 <p align="center">
@@ -119,8 +119,9 @@ Potential reasons include:
 ---
 
 #### Based on your explorations of switchable and dynamic quantization, could you propose some promising research directions or questions for further integrating them with LLMs?
-- Use InstantNet-style, cascade distillation training (CDT) to improve lower-bitwidth lora performance. This involves implementing a loss function that not only minimizes the cross-entropy loss, but also the distillation loss from all higher bits. Only base model weights (but no lora) were trained in InstantNet.
-- Use a switchable-precision neural architecture search (also in InstantNet) to dynamically find the network configuration alpha that strikes the optimal balance between evaluation loss and network efficiency. In our work, a static greedy inference was used due to time constraints.
-- Train LoRA modules jointly using a unified loss over all target bit-widths
-- Introduce cross-bitwidth distillation loss (e.g., 32-bit teacher supervising 4-bit)
+- Apply switchable quantization to the Adam optimizer
+  - Use the first and second moments as signals to update the bitwidth (as opposed to updating the learning rate)
+  - Inspired by *CPT* where bitwidths have the same effect as learning rates
+- Use *InstantNet*-style, cascade distillation training (CDT) to improve lower-bitwidth lora performance. This involves implementing a loss function that not only minimizes the cross-entropy loss, but also the distillation loss from all higher bits. Only base model weights (but no lora) were trained in InstantNet.
+- Use a switchable-precision neural architecture search (also in *InstantNet*) to dynamically find the network configuration alpha that strikes the optimal balance between evaluation loss and network efficiency. In our work, a static greedy inference was used due to time constraints.
 - Create a gradient-based, causal-LM adversarial attack to evaluate whether the robustness improves with QAT training
